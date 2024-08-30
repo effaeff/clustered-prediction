@@ -1,0 +1,10 @@
+joblib==1.4.2
+matplotlib==3.8.4
+numpy==1.25.2
+pandas==2.0.3
+plot_utils==0.6.14
+PyWavelets==1.4.1
+scikit_learn==1.4.2
+scipy==1.8.1
+tqdm==4.66.4
+xgboost==1.7.6
