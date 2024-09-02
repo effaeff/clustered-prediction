@@ -37,7 +37,8 @@ from config import (
     VERBOSE,
     PROCESSED_DIR,
     TEST_SIZE,
-    INPUT_SIZE
+    INPUT_SIZE,
+    PROBLEM_CASES
 )
 
 class DataProcessing:
@@ -80,7 +81,7 @@ class DataProcessing:
             wavelet = 'mexh'
             downsample_rate = 5
             sync_idx = 1
-            sync_thresh = 0.05
+            sync_thresh = 0.07
             f_s_downsamples = f_s / downsample_rate
 
             params = pd.read_excel(PARAM_FILE)
@@ -91,23 +92,22 @@ class DataProcessing:
             scenarios = []
 
             for idx, fname in enumerate(tqdm(fnames)):
-                data = np.loadtxt(f'{DATA_DIR}/{fname}', skiprows=8, usecols=[1, 2, 3])
-                exp_number = os.path.splitext(fname)[0].split('_')[-1]
-                if VERBOSE:
-                    print(f'Exp: {exp_number}')
+                # data = np.loadtxt(f'{DATA_DIR}/{fname}', skiprows=8, usecols=[1, 2, 3])
+                # defl = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_filtered.npz')
+                # dx = defl['dx']
+                # dy = defl['dy']
 
-                defl = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_filtered.npz')
-                dx = defl['dx']
-                dy = defl['dy']
+                exp_number = int(os.path.splitext(fname)[0].split('_')[-1])
+
+                data = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy')
 
                 spsp, fz, ae, input_ae, r1, r2 = params[
                     params['Messdatei']==f'V0_{exp_number}'
                 ].to_numpy()[0][1:7]
 
-
                 data = signal.decimate(data, downsample_rate, axis=0)
-                dx = signal.decimate(dx, downsample_rate)
-                dy = signal.decimate(dy, downsample_rate)
+                # dx = signal.decimate(dx, downsample_rate)
+                # dy = signal.decimate(dy, downsample_rate)
                 time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(data))])
 
                 #######################################################################################
@@ -146,7 +146,9 @@ class DataProcessing:
                 ################################# Signal plot #########################################
                 #######################################################################################
 
+                # if VERBOSE and exp_number in PROBLEM_CASES:
                 if VERBOSE:
+                    print(f'Exp. number: {exp_number}')
                     force_labels = ['fx', 'fy', 'fz']
                     fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
 
@@ -155,8 +157,8 @@ class DataProcessing:
 
                     axs[0].axvline(sig_start)
                     axs[0].axvline(sig_stop)
-                    axs[1].plot(time, dx * 1e+6) # to µm
-                    axs[1].plot(time, dy * 1e+6) # to µm
+                    axs[1].plot(time, data[:, 3] * 1e+6) # to µm
+                    axs[1].plot(time, data[:, 4] * 1e+6) # to µm
 
                     axs[2].contourf(time, freqs, power, cmap='inferno')
                     axs[2].axhline(fz_freq*2)
@@ -184,19 +186,20 @@ class DataProcessing:
                 #######################################################################################
 
                 data = data[start_idx:stop_idx]
-                dx = dx[start_idx:stop_idx]
-                dy = dy[start_idx:stop_idx]
+                # dx = dx[start_idx:stop_idx]
+                # dy = dy[start_idx:stop_idx]
 
                 time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(data))])
                 features_target = np.c_[
                     time,
-                    data,
+                    data[:, :3],
                     [spsp for __ in range(len(data))],
                     [fz for __ in range(len(data))],
                     [r1 for __ in range(len(data))],
                     [r2 for __ in range(len(data))],
-                    dx,
-                    dy
+                    data[:, 3:]
+                    # dx,
+                    # dy
                 ]
 
                 scenarios.append(features_target)
