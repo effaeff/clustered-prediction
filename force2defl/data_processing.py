@@ -60,7 +60,7 @@ class DataProcessing:
 
         for test_idx, test_scenario in enumerate(self.test):
             scaled_test_scenario = self.scaler.transform(test_scenario[:, :INPUT_SIZE])
-            self.test[test_idx] = scaled_test_scenario
+            self.test[test_idx][:, :INPUT_SIZE] = scaled_test_scenario
 
     def get_train_test(self):
         return self.train_concat, self.test
