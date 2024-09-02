@@ -24,7 +24,7 @@ def test(hyperopt, test_data):
 
     for scenario_idx, test_scenario in enumerate(test_data):
 
-        total_pred = np.emtpy((len(test_scenario), OUTPUT_SIZE))
+        total_pred = np.empty((len(test_scenario), OUTPUT_SIZE))
         total_target = test_scenario[:, INPUT_SIZE:]
         for out_idx in range(OUTPUT_SIZE):
             pred = hyperopt[out_idx].predict(test_scenario[:, :INPUT_SIZE])
