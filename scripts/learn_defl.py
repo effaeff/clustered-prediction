@@ -17,8 +17,8 @@ def main():
     processing = DataProcessing()
 
     train_data, test_data = processing.get_train_test()
-    # hyperopts = train(train_data)
-    hyperopts = load_estimators(MODEL_DIR)
+    hyperopts = train(train_data)
+    # hyperopts = load_estimators(MODEL_DIR)
     total_errors = np.empty((len(hyperopts), OUTPUT_SIZE))
     total_variances = np.empty((len(hyperopts), OUTPUT_SIZE))
     for hyper_idx, hyperopt in enumerate(hyperopts):

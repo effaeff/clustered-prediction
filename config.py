@@ -11,7 +11,7 @@ PROCESSED_DIR = 'data/02_processed'
 MODEL_DIR = 'models'
 RESULTS_DIR = 'results'
 PLOT_DIR = 'plots'
-PARAM_FILE = 'data/01_raw/clustersim_lhs_Zuordnung_Messdaten_FW.xlsx'
+PARAM_FILE = 'data/01_raw/clustersim_lhs_Zuordnung_Messdaten__FW.xlsx'
 
 FONTSIZE = 8
 

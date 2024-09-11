@@ -61,5 +61,6 @@ def test(hyperopt, test_data):
             f'{PLOT_DIR}/{hyperopt[0].best_estimator_.__class__.__name__}_scenario{scenario_idx}.png',
             dpi=600
         )
+        # plt.show()
 
     return errors, variances

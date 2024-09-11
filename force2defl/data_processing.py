@@ -105,104 +105,108 @@ class DataProcessing:
                     params['Messdatei']==f'V0_{exp_number}'
                 ].to_numpy()[0][1:7]
 
-                data = signal.decimate(data, downsample_rate, axis=0)
-                # dx = signal.decimate(dx, downsample_rate)
-                # dy = signal.decimate(dy, downsample_rate)
-                time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(data))])
+                chatter = params[params['Messdatei']==f'V0_{exp_number}'].to_numpy()[0][16]
 
-                #######################################################################################
-                ############################### Wavelet shizzle #######################################
-                #######################################################################################
+                if chatter in ['+', 'o/+', 'o']:
 
-                # Use wavelets for high frequency resolution
-                fz_freq = spsp / 60.0 * n_edges
-                freqs = np.array([
-                    fz_freq / freq_div + idx * fz_freq / freq_div for idx in range(nb_scales)
-                ])
-                scale = pywt.frequency2scale(wavelet, freqs / f_s_downsamples)
+                    data = signal.decimate(data, downsample_rate, axis=0)
+                    # dx = signal.decimate(dx, downsample_rate)
+                    # dy = signal.decimate(dy, downsample_rate)
+                    time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(data))])
 
-                cwtmatr, __ = pywt.cwt(
-                    (data[:, sync_idx] - np.mean(data[:, sync_idx])) / np.std(data[:, sync_idx]),
-                    scale,
-                    wavelet,
-                    sampling_period=1/f_s_downsamples
-                )
+                    #######################################################################################
+                    ############################### Wavelet shizzle #######################################
+                    #######################################################################################
 
-                power = np.power(np.abs(cwtmatr), 2)
+                    # Use wavelets for high frequency resolution
+                    fz_freq = spsp / 60.0 * n_edges
+                    freqs = np.array([
+                        fz_freq / freq_div + idx * fz_freq / freq_div for idx in range(nb_scales)
+                    ])
+                    scale = pywt.frequency2scale(wavelet, freqs / f_s_downsamples)
 
-                # Scale-dependent normalization of power
-                scale_avg = np.repeat(scale, len(data)).reshape(power.shape)
-                power = power / scale_avg
+                    cwtmatr, __ = pywt.cwt(
+                        (data[:, sync_idx] - np.mean(data[:, sync_idx])) / np.std(data[:, sync_idx]),
+                        scale,
+                        wavelet,
+                        sampling_period=1/f_s_downsamples
+                    )
 
-                start_idx = next(__ for __, val in enumerate(power[freq_div*2-1]) if val > sync_thresh)
-                sig_start = time[start_idx]
-                stop_idx = (
-                    len(data) \
-                    - next(__ for __, val in enumerate(np.flip(power[freq_div*2-1])) if val > sync_thresh)
-                )
-                sig_stop = time[stop_idx]
+                    power = np.power(np.abs(cwtmatr), 2)
 
-                #######################################################################################
-                ################################# Signal plot #########################################
-                #######################################################################################
+                    # Scale-dependent normalization of power
+                    scale_avg = np.repeat(scale, len(data)).reshape(power.shape)
+                    power = power / scale_avg
 
-                # if VERBOSE and exp_number in PROBLEM_CASES:
-                if VERBOSE:
-                    print(f'Exp. number: {exp_number}')
-                    force_labels = ['fx', 'fy', 'fz']
-                    fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
+                    start_idx = next(__ for __, val in enumerate(power[freq_div*2-1]) if val > sync_thresh)
+                    sig_start = time[start_idx]
+                    stop_idx = (
+                        len(data) \
+                        - next(__ for __, val in enumerate(np.flip(power[freq_div*2-1])) if val > sync_thresh)
+                    )
+                    sig_stop = time[stop_idx]
 
-                    for jdx in range(3):
-                        axs[0].plot(time, data[:, jdx], label=force_labels[jdx])
+                    #######################################################################################
+                    ################################# Signal plot #########################################
+                    #######################################################################################
 
-                    axs[0].axvline(sig_start)
-                    axs[0].axvline(sig_stop)
-                    axs[1].plot(time, data[:, 3] * 1e+6) # to µm
-                    axs[1].plot(time, data[:, 4] * 1e+6) # to µm
+                    # if VERBOSE and exp_number in PROBLEM_CASES:
+                    if VERBOSE:
+                        print(f'Exp. number: {exp_number}')
+                        force_labels = ['fx', 'fy', 'fz']
+                        fig, axs = plt.subplots(4, 1, figsize=(10, 10), sharex=True)
 
-                    axs[2].contourf(time, freqs, power, cmap='inferno')
-                    axs[2].axhline(fz_freq*2)
+                        for jdx in range(3):
+                            axs[0].plot(time, data[:, jdx], label=force_labels[jdx])
 
-                    axs[3].plot(time, power[freq_div*2-1])
+                        axs[0].axvline(sig_start)
+                        axs[0].axvline(sig_stop)
+                        axs[1].plot(time, data[:, 3] * 1e+6) # to µm
+                        axs[1].plot(time, data[:, 4] * 1e+6) # to µm
 
-                    fig.canvas.draw()
+                        axs[2].contourf(time, freqs, power, cmap='inferno')
+                        axs[2].axhline(fz_freq*2)
 
-                    plt.setp(axs[0].get_xticklabels(), visible=False)
-                    plt.setp(axs[1].get_xticklabels(), visible=False)
-                    plt.setp(axs[2].get_xticklabels(), visible=False)
+                        axs[3].plot(time, power[freq_div*2-1])
 
-                    axs[0].set_ylabel('Force in N')
-                    axs[1].set_ylabel('Deflection in µm')
-                    axs[2].set_ylabel('Frequency in Hz')
-                    axs[3].set_ylabel('Wavelet intensity')
-                    axs[3].set_xlabel('Time in s')
+                        fig.canvas.draw()
 
-                    fig.align_ylabels()
-                    fig.tight_layout(pad=0.1)
+                        plt.setp(axs[0].get_xticklabels(), visible=False)
+                        plt.setp(axs[1].get_xticklabels(), visible=False)
+                        plt.setp(axs[2].get_xticklabels(), visible=False)
 
-                    plt.show()
-                    plt.close()
+                        axs[0].set_ylabel('Force in N')
+                        axs[1].set_ylabel('Deflection in µm')
+                        axs[2].set_ylabel('Frequency in Hz')
+                        axs[3].set_ylabel('Wavelet intensity')
+                        axs[3].set_xlabel('Time in s')
 
-                #######################################################################################
+                        fig.align_ylabels()
+                        fig.tight_layout(pad=0.1)
 
-                data = data[start_idx:stop_idx]
-                # dx = dx[start_idx:stop_idx]
-                # dy = dy[start_idx:stop_idx]
+                        plt.show()
+                        plt.close()
 
-                time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(data))])
-                features_target = np.c_[
-                    time,
-                    data[:, :3],
-                    [spsp for __ in range(len(data))],
-                    [fz for __ in range(len(data))],
-                    [r1 for __ in range(len(data))],
-                    [r2 for __ in range(len(data))],
-                    data[:, 3:]
-                    # dx,
-                    # dy
-                ]
+                    #######################################################################################
 
-                scenarios.append(features_target)
+                    data = data[start_idx:stop_idx]
+                    # dx = dx[start_idx:stop_idx]
+                    # dy = dy[start_idx:stop_idx]
+
+                    time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(data))])
+                    features_target = np.c_[
+                        time,
+                        data[:, :3],
+                        [spsp for __ in range(len(data))],
+                        [fz for __ in range(len(data))],
+                        [r1 for __ in range(len(data))],
+                        [r2 for __ in range(len(data))],
+                        data[:, 3:]
+                        # dx,
+                        # dy
+                    ]
+
+                    scenarios.append(features_target)
 
             scenarios = np.array(scenarios, dtype=object)
 
