@@ -17,6 +17,5 @@ module load python/3.9.10-wip
 echo "sbatch: START SLURM_JOB_ID $SLURM_JOB_ID (SLURM_TASK_PID $SLURM_TASK_PID) on $SLURMD_NODENAME"
 echo "sbatch: SLURM_JOB_NODELIST $SLURM_JOB_NODELIST"
 echo "sbatch: SLURM_JOB_ACCOUNT $SLURM_JOB_ACCOUNT"
-pip3 install -r requirements.txt
 python3 scripts/learn_defl.py
 
