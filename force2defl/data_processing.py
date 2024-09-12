@@ -9,6 +9,8 @@ from tqdm import tqdm
 
 import misc
 
+from geometry import ar_area
+
 import pywt
 from scipy import signal
 from matplotlib import pyplot as plt
@@ -38,7 +40,8 @@ from config import (
     PROCESSED_DIR,
     TEST_SIZE,
     INPUT_SIZE,
-    PROBLEM_CASES
+    PROBLEM_CASES,
+    N_EDGES
 )
 
 class DataProcessing:
@@ -145,6 +148,54 @@ class DataProcessing:
                         - next(__ for __, val in enumerate(np.flip(power[freq_div*2-1])) if val > sync_thresh)
                     )
                     sig_stop = time[stop_idx]
+
+                    #######################################################################################
+                    ################################## Path data ##########################################
+                    #######################################################################################
+
+                    path = np.genfromtxt(
+                        f'{DATA_DIR}/V0_{exp_number}_XYZ_of_Pts.dat',
+                        skip_header=6,
+                        skip_footer=1,
+                        delimiter=',',
+                        usecols=[0, 1]
+                    )
+
+                    feed = fz * spsp * n_edges
+
+                    s_per_mm = 60 / feed
+                    path_dist = [0] + [
+                        np.sqrt((path[jdx, 0] - path[jdx-1, 0])**2 + (path[jdx, 1] - path[jdx-1, 1])**2)
+                        for jdx in range(1, len(path))
+                    ]
+
+                    path_time = []
+                    for jdx, dist in enumerate(path_dist):
+                        local_time = s_per_mm * dist
+                        if jdx > 0:
+                            local_time += path_time[jdx-1]
+                        path_time.append(local_time)
+
+                    path_time = np.array(path_time)
+
+                    path_time_up = [0]
+                    jdx = 1
+                    while(path_time_up[-1] < path_time[-1]):
+                        path_time_up.append(1 / f_s_downsamples * jdx)
+                        jdx += 1
+
+                    upsampled_path_x = np.interp(path_time_up, path_time, path[:, 0])
+                    upsampled_path_y = np.interp(path_time_up, path_time, path[:, 1])
+
+                    path = np.transpose([upsampled_path_x, upsampled_path_y])
+
+                    path_cur_y = path[0, 1]
+                    while ar_area(4, path[0, 0], path_cur_y, -34.5, -34.5, 34.5, 34.5) > 0:
+                        path_cur_y -= (1 / s_per_mm) * 1 / f_s_downsamples
+                        path = np.insert(path, 0, [path[0, 0], path_cur_y], axis=0)
+                        path_time_up.append(path_time_up[-1] + 1 / f_s_downsamples)
+
+                    path_time_up = np.array(path_time_up)
 
                     #######################################################################################
                     ################################# Signal plot #########################################

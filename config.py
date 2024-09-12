@@ -6,6 +6,9 @@ from sklearn.ensemble import (
 import xgboost as xgb
 from scipy.stats import uniform, randint
 
+
+N_EDGES = 2
+
 DATA_DIR = 'data/01_raw'
 PROCESSED_DIR = 'data/02_processed'
 MODEL_DIR = 'models'
