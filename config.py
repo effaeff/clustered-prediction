@@ -51,6 +51,11 @@ PROBLEM_CASES = [
     64001
 ]
 
+CLUSTER_MODELING = True
+N_CLUSTER = 12
+N_CLUSTER_SILH = [3, 8, 12]
+CLUSTER_COLS = [4, 5]
+
 PARAM_DICTS = [
     # {
         # 'learning_rate': uniform(0.0001, 0.1),
