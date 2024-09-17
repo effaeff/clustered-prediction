@@ -1,5 +1,6 @@
 """Clustering of time series data"""
 
+import os
 import numpy as np
 
 from matplotlib import pyplot as plt
@@ -43,13 +44,18 @@ class Clusterer:
         Clusters train and test data using cluster_cols as features.
         Add additional column to each data array indicating the cluster index.
         """
-        clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
-        cluster_labels = clusterer.fit_predict(train_data[:, cluster_cols])
-        dump(
-            clusterer,
-            f'{MODEL_DIR}/kmeans.joblib'
-        )
+        clusterer_fname = f'{MODEL_DIR}/kmeans.joblib'
 
+        if os.path.isfile(clusterer_fname):
+            clusterer = load(clusterer_fname)
+        else:
+            clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
+            dump(
+                clusterer,
+                f'{MODEL_DIR}/kmeans.joblib'
+            )
+
+        cluster_labels = clusterer.fit_predict(train_data[:, cluster_cols])
         train_data = np.c_[train_data, cluster_labels]
 
         for test_idx, test_scenario in enumerate(test_data):
