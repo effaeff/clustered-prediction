@@ -2,11 +2,9 @@
 
 import numpy as np
 import sys
+
 import os
-default_n_threads = 1
-os.environ['OPENBLAS_NUM_THREADS'] = f"{default_n_threads}"
-os.environ['MKL_NUM_THREADS'] = f"{default_n_threads}"
-os.environ['OMP_NUM_THREADS'] = f"{default_n_threads}"
+from joblib import dump
 
 from tqdm import tqdm
 from sklearn.model_selection import RandomizedSearchCV
@@ -14,6 +12,7 @@ from sklearn.model_selection import RandomizedSearchCV
 import warnings
 
 from config import (
+    MODEL_DIR,
     REGRESSORS,
     PARAM_DICTS,
     INPUT_SIZE,
@@ -22,7 +21,8 @@ from config import (
     N_ITER_SEARCH,
     CLUSTER_MODELING,
     N_CLUSTER,
-    CLUSTER_COLS
+    CLUSTER_COLS,
+    OUT_LABELS
 )
 
 def fit(inp, target, regressor, param_dict):
@@ -34,7 +34,8 @@ def fit(inp, target, regressor, param_dict):
         cv=CV_FOLDS,
         scoring='neg_root_mean_squared_error',
         n_jobs=-1,
-        error_score='raise'
+        error_score='raise',
+        verbose=4
     )
     rand_search.fit(
         inp,
@@ -58,11 +59,17 @@ def train(train_data):
                         cluster_data = train_data[train_data[:, -1]==cluster_idx, :-1]
                         inp = cluster_data[:, :INPUT_SIZE]
                         target = cluster_data[:, INPUT_SIZE + out_idx]
-                        hyperopts[reg_idx, out_idx, cluster_idx] = fit(
+                        hyperopt = fit(
                             inp,
                             target,
                             REGRESSORS[reg_idx][out_idx],
                             param_dict=PARAM_DICTS[reg_idx]
+                        )
+                        hyperopts[reg_idx, out_idx, cluster_idx] = hyperopt
+                        dump(
+                            hyperopt,
+                            f'{MODEL_DIR}/hyperopt_{REGRESSORS[reg_idx][0].__class__.__name__}'
+                            f'_{OUT_LABELS[out_idx]}_cluster-{cluster_idx}.joblib'
                         )
                 else:
                     inp = train_data[:, :INPUT_SIZE]

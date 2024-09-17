@@ -16,6 +16,8 @@ RESULTS_DIR = 'results'
 PLOT_DIR = 'plots'
 PARAM_FILE = 'data/01_raw/clustersim_lhs_Zuordnung_Messdaten__FW.xlsx'
 
+OUT_LABELS = ['dx', 'dy']
+
 FONTSIZE = 8
 
 RANDOM_SEED = 1234

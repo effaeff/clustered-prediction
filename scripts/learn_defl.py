@@ -1,5 +1,11 @@
 """Script for process clustering"""
 
+import os
+default_n_threads = 1
+os.environ['OPENBLAS_NUM_THREADS'] = f"{default_n_threads}"
+os.environ['MKL_NUM_THREADS'] = f"{default_n_threads}"
+os.environ['OMP_NUM_THREADS'] = f"{default_n_threads}"
+
 import misc
 import numpy as np
 from joblib import dump, load
@@ -45,13 +51,13 @@ def main():
 
     hyperopts = train(train_data)
     # hyperopts = load_estimators(MODEL_DIR)
-    total_errors = np.empty((len(hyperopts), OUTPUT_SIZE))
-    total_variances = np.empty((len(hyperopts), OUTPUT_SIZE))
-    for hyper_idx, hyperopt in enumerate(hyperopts):
-        dump(
-            hyperopt,
-            f'{MODEL_DIR}/hyperopt_{hyperopt[0].best_estimator_.__class__.__name__}.joblib'
-        )
+    # total_errors = np.empty((len(hyperopts), OUTPUT_SIZE))
+    # total_variances = np.empty((len(hyperopts), OUTPUT_SIZE))
+    # for hyper_idx, hyperopt in enumerate(hyperopts):
+        # dump(
+            # hyperopt,
+            # f'{MODEL_DIR}/hyperopt_{hyperopt[0].best_estimator_.__class__.__name__}.joblib'
+        # )
         # errors, variances = test(hyperopt, test_data)
         # total_errors[hyper_idx] = errors
         # total_variances[hyper_idx] = variances
