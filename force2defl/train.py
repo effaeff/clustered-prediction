@@ -4,7 +4,7 @@ import numpy as np
 import sys
 
 import os
-from joblib import dump
+from joblib import dump, load
 
 from tqdm import tqdm
 from sklearn.model_selection import RandomizedSearchCV
@@ -22,7 +22,8 @@ from config import (
     CLUSTER_MODELING,
     N_CLUSTER,
     CLUSTER_COLS,
-    OUT_LABELS
+    OUT_LABELS,
+    VERBOSE
 )
 
 def fit(inp, target, regressor, param_dict):
@@ -35,7 +36,7 @@ def fit(inp, target, regressor, param_dict):
         scoring='neg_root_mean_squared_error',
         n_jobs=-1,
         error_score='raise',
-        verbose=4
+        verbose=(4 if VERBOSE else 0)
     )
     rand_search.fit(
         inp,
@@ -59,18 +60,23 @@ def train(train_data):
                         cluster_data = train_data[train_data[:, -1]==cluster_idx, :-1]
                         inp = cluster_data[:, :INPUT_SIZE]
                         target = cluster_data[:, INPUT_SIZE + out_idx]
-                        hyperopt = fit(
-                            inp,
-                            target,
-                            REGRESSORS[reg_idx][out_idx],
-                            param_dict=PARAM_DICTS[reg_idx]
-                        )
-                        hyperopts[reg_idx, out_idx, cluster_idx] = hyperopt
-                        dump(
-                            hyperopt,
+                        hyperopt_fname = (
                             f'{MODEL_DIR}/hyperopt_{REGRESSORS[reg_idx][0].__class__.__name__}'
                             f'_{OUT_LABELS[out_idx]}_cluster-{cluster_idx}.joblib'
                         )
+                        if os.path.isfile(hyperopt_fname):
+                            hyperopt = load(hyperopt_fname)
+                        else:
+                            if VERBOSE:
+                                print(f'Fitting {hyperopt_fname}...')
+                            hyperopt = fit(
+                                inp,
+                                target,
+                                REGRESSORS[reg_idx][out_idx],
+                                param_dict=PARAM_DICTS[reg_idx]
+                            )
+                            dump(hyperopt, hyperopt_fname)
+                        hyperopts[reg_idx, out_idx, cluster_idx] = hyperopt
                 else:
                     inp = train_data[:, :INPUT_SIZE]
                     target = train_data[:, INPUT_SIZE + out_idx]
