@@ -79,8 +79,8 @@ PARAM_DICTS = [
         # 'max_features': randint(1, INPUT_SIZE)
     # },
     {
-        'n_estimators': randint(100, 1000),
-        'max_depth': randint(2, 32),
+        'n_estimators': randint(100, 250),
+        'max_depth': randint(2, 16),
         'min_samples_split': randint(2, 11),
         'min_samples_leaf': randint(2, 11),
         'max_features': randint(1, INPUT_SIZE)

@@ -22,6 +22,7 @@ from config import (
     DATA_DIR,
     RANDOM_SEED,
     PARAM_FILE,
+    MODEL_DIR,
     FONTSIZE,
     PLOT_DIR,
     RESULTS_DIR,
@@ -44,6 +45,10 @@ class Clusterer:
         """
         clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
         cluster_labels = clusterer.fit_predict(train_data[:, cluster_cols])
+        dump(
+            clusterer,
+            f'{MODEL_DIR}/kmeans.joblib'
+        )
 
         train_data = np.c_[train_data, cluster_labels]
 
