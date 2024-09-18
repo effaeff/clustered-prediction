@@ -26,22 +26,28 @@ from config import (
     VERBOSE
 )
 
-def fit(inp, target, regressor, param_dict):
+def fit(inp, target, regressor, param_dict, hyperopt_fname):
     """Fitting method"""
-    rand_search = RandomizedSearchCV(
-        regressor,
-        param_distributions=param_dict,
-        n_iter=N_ITER_SEARCH,
-        cv=CV_FOLDS,
-        scoring='neg_root_mean_squared_error',
-        n_jobs=-1,
-        error_score='raise',
-        verbose=(4 if VERBOSE else 0)
-    )
-    rand_search.fit(
-        inp,
-        target
-    )
+    if os.path.isfile(hyperopt_fname):
+        rand_search = load(hyperopt_fname)
+    else:
+        if VERBOSE:
+            print(f'Fitting {hyperopt_fname}...')
+        rand_search = RandomizedSearchCV(
+            regressor,
+            param_distributions=param_dict,
+            n_iter=N_ITER_SEARCH,
+            cv=CV_FOLDS,
+            scoring='neg_root_mean_squared_error',
+            n_jobs=-1,
+            error_score='raise',
+            verbose=(4 if VERBOSE else 0)
+        )
+        rand_search.fit(
+            inp,
+            target
+        )
+        dump(rand_search, hyperopt_fname)
     return rand_search
 
 def train(train_data):
@@ -64,26 +70,25 @@ def train(train_data):
                             f'{MODEL_DIR}/hyperopt_{REGRESSORS[reg_idx][0].__class__.__name__}'
                             f'_{OUT_LABELS[out_idx]}_cluster-{cluster_idx}.joblib'
                         )
-                        if os.path.isfile(hyperopt_fname):
-                            hyperopt = load(hyperopt_fname)
-                        else:
-                            if VERBOSE:
-                                print(f'Fitting {hyperopt_fname}...')
-                            hyperopt = fit(
-                                inp,
-                                target,
-                                REGRESSORS[reg_idx][out_idx],
-                                param_dict=PARAM_DICTS[reg_idx]
-                            )
-                            dump(hyperopt, hyperopt_fname)
-                        hyperopts[reg_idx, out_idx, cluster_idx] = hyperopt
+                        hyperopts[reg_idx, out_idx, cluster_idx] = fit(
+                            inp,
+                            target,
+                            REGRESSORS[reg_idx][out_idx],
+                            PARAM_DICTS[reg_idx],
+                            hyperopt_fname
+                        )
                 else:
                     inp = train_data[:, :INPUT_SIZE]
                     target = train_data[:, INPUT_SIZE + out_idx]
+                    hyperopt_fname = (
+                        f'{MODEL_DIR}/hyperopt_{REGRESSORS[reg_idx][0].__class__.__name__}'
+                        f'_{OUT_LABELS[out_idx]}.joblib'
+                    )
                     hyperopts[reg_idx, out_idx] = fit(
                         inp,
                         target,
                         REGRESSORS[reg_idx][out_idx],
-                        param_dict=PARAM_DICTS[reg_idx]
+                        PARAM_DICTS[reg_idx],
+                        hyperopt_fname
                     )
     return hyperopts

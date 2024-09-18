@@ -50,18 +50,13 @@ def main():
         test_data[test_idx][:, :INPUT_SIZE] = scaled_test_scenario
 
     hyperopts = train(train_data)
-    # hyperopts = load_estimators(MODEL_DIR)
     total_errors = np.empty((len(hyperopts), OUTPUT_SIZE))
     total_variances = np.empty((len(hyperopts), OUTPUT_SIZE))
     for hyper_idx, hyperopt in enumerate(hyperopts):
-        # dump(
-            # hyperopt,
-            # f'{MODEL_DIR}/hyperopt_{hyperopt[0].best_estimator_.__class__.__name__}.joblib'
-        # )
         errors, variances = test(hyperopt, test_data)
         total_errors[hyper_idx] = errors
         total_variances[hyper_idx] = variances
-        write_results(hyperopts, total_errors, total_variances)
+        # write_results(hyperopts, total_errors, total_variances)
 
 if __name__ == '__main__':
     main()
