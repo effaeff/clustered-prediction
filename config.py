@@ -1,3 +1,15 @@
+import os
+
+def available_cpu_count():
+    """ Number of *available* virtual or physical CPUs on this system """
+    # Tested with Python 3.3 - 3.13 on Linux
+    try:
+        res = len(os.sched_getaffinity(0))
+        if res > 0:
+            return res
+    except (KeyError, ValueError):
+        pass
+
 from sklearn.ensemble import (
     GradientBoostingRegressor,
     RandomForestRegressor,
@@ -29,7 +41,7 @@ OUTPUT_SIZE = 2
 CV_FOLDS = 5
 N_ITER_SEARCH = 20
 
-VERBOSE = True
+VERBOSE = False
 
 PROBLEM_CASES = [
     16001,
@@ -53,7 +65,7 @@ PROBLEM_CASES = [
     64001
 ]
 
-CLUSTER_MODELING = True
+CLUSTER_MODELING = False
 N_CLUSTER = 12
 N_CLUSTER_SILH = [3, 8, 12]
 CLUSTER_COLS = [4, 5]
@@ -92,5 +104,10 @@ REGRESSORS = [
     # [xgb.XGBRegressor(objective='reg:squarederror') for __ in range(OUTPUT_SIZE)]
     # [AdaBoostRegressor(random_state=RANDOM_SEED) for __ in range(OUTPUT_SIZE)],
     # [GradientBoostingRegressor(random_state=RANDOM_SEED) for __ in range(OUTPUT_SIZE)],
-    [RandomForestRegressor(random_state=RANDOM_SEED, n_jobs=-1) for __ in range(OUTPUT_SIZE)]
+    [
+        RandomForestRegressor(
+            random_state=RANDOM_SEED,
+            n_jobs=available_cpu_count()//2
+        ) for __ in range(OUTPUT_SIZE)
+    ]
 ]

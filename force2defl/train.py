@@ -39,7 +39,7 @@ def fit(inp, target, regressor, param_dict, hyperopt_fname):
             n_iter=N_ITER_SEARCH,
             cv=CV_FOLDS,
             scoring='neg_root_mean_squared_error',
-            n_jobs=-1,
+            n_jobs=1,
             error_score='raise',
             verbose=(4 if VERBOSE else 0)
         )
