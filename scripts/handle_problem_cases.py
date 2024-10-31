@@ -28,18 +28,21 @@ def onclick(event):
         first_click = True
 
         truncated_data = combined_dataset[start:end, :]
-        np.save(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy', truncated_data)
+        np.save(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_combined.npy', truncated_data)
 
 fnames = [fname for fname in os.listdir(DATA_DIR) if fname.endswith('.txt')]
 
 for idx, fname in enumerate(fnames):
     exp_number = int(os.path.splitext(fname)[0].split('_')[-1])
     # data = np.loadtxt(f'{DATA_DIR}/{fname}', skiprows=8, usecols=[1, 2, 3])
+    force = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_filtered_if_tp_iir.npz')
+    defl = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy')
     # defl = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_filtered.npz')
 
     # combined_dataset = np.c_[data, defl['dx'], defl['dy']]
+    combined_dataset = np.c_[force['Fx'], force['Fy'], force['Fz'], defl[:, 1], defl[:, 2]]
 
-    combined_dataset = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy')
+    # combined_dataset = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy')
 
     if exp_number in PROBLEM_CASES:
         fig, axs = plt.subplots(1, 1, figsize=(20, 10))
@@ -51,6 +54,6 @@ for idx, fname in enumerate(fnames):
         plt.close()
         fig.canvas.mpl_disconnect(cid)
     else:
-        np.save(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy', combined_dataset)
+        np.save(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_combined.npy', combined_dataset)
 
 

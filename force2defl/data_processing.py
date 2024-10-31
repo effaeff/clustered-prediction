@@ -17,13 +17,15 @@ from matplotlib import pyplot as plt
 plt.rc('axes', axisbelow=True)
 plt.rc('font', family='Arial')
 from matplotlib.patches import Rectangle
-from matplotlib import cm
+from matplotlib import colormaps as cm
+from sklearn.cluster import KMeans
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from plot_utils import modify_axis, hist, CM_INCH
+from series import butter_lowpass_filter
 from colors import dark2
 
 from joblib import dump, load
@@ -96,14 +98,14 @@ class DataProcessing:
             scenarios = []
 
             for idx, fname in enumerate(tqdm(fnames)):
-                # data = np.loadtxt(f'{DATA_DIR}/{fname}', skiprows=8, usecols=[1, 2, 3])
+                # data = np.loadtxt(f'{DATA_DIR}/{fname}', skiprows=8, usecols=[1, 2, 3, 5, 6])
                 # defl = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_filtered.npz')
                 # dx = defl['dx']
                 # dy = defl['dy']
-
                 exp_number = int(os.path.splitext(fname)[0].split('_')[-1])
 
-                data = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy')
+                data = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_combined.npy')
+                # data = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy')
 
                 spsp, fz, ae, input_ae, r1, r2 = params[
                     params['Messdatei']==f'V0_{exp_number}'
@@ -111,44 +113,21 @@ class DataProcessing:
 
                 chatter = params[params['Messdatei']==f'V0_{exp_number}'].to_numpy()[0][16]
 
-                if chatter in ['+', 'o/+', 'o']:
+                # if chatter in ['+', 'o/+', 'o']:
+                if True:
+                    #######################################################################################
+                    ############################ Deflection filtering #####################################
+                    #######################################################################################
+
+                    data[:, 3] = butter_lowpass_filter(data[:, 3], 10000, f_s, 6)
+                    data[:, 4] = butter_lowpass_filter(data[:, 4], 10000, f_s, 6)
+
+                    #######################################################################################
 
                     data = signal.decimate(data, downsample_rate, axis=0)
                     # dx = signal.decimate(dx, downsample_rate)
                     # dy = signal.decimate(dy, downsample_rate)
                     time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(data))])
-
-                    #######################################################################################
-                    ############################### Wavelet shizzle #######################################
-                    #######################################################################################
-
-                    # Use wavelets for high frequency resolution
-                    fz_freq = spsp / 60.0 * n_edges
-                    freqs = np.array([
-                        fz_freq / freq_div + idx * fz_freq / freq_div for idx in range(nb_scales)
-                    ])
-                    scale = pywt.frequency2scale(wavelet, freqs / f_s_downsamples)
-
-                    cwtmatr, __ = pywt.cwt(
-                        (data[:, sync_idx] - np.mean(data[:, sync_idx])) / np.std(data[:, sync_idx]),
-                        scale,
-                        wavelet,
-                        sampling_period=1/f_s_downsamples
-                    )
-
-                    power = np.power(np.abs(cwtmatr), 2)
-
-                    # Scale-dependent normalization of power
-                    scale_avg = np.repeat(scale, len(data)).reshape(power.shape)
-                    power = power / scale_avg
-
-                    start_idx = next(__ for __, val in enumerate(power[freq_div*2-1]) if val > sync_thresh)
-                    sig_start = time[start_idx]
-                    stop_idx = (
-                        len(data) \
-                        - next(__ for __, val in enumerate(np.flip(power[freq_div*2-1])) if val > sync_thresh)
-                    )
-                    sig_stop = time[stop_idx]
 
                     #######################################################################################
                     ################################## Path data ##########################################
@@ -197,6 +176,38 @@ class DataProcessing:
                         path_time_up.append(path_time_up[-1] + 1 / f_s_downsamples)
 
                     path_time_up = np.array(path_time_up)
+
+                    #######################################################################################
+                    ############################### Wavelet shizzle #######################################
+                    #######################################################################################
+
+                    # Use wavelets for high frequency resolution
+                    fz_freq = spsp / 60.0 * n_edges
+                    freqs = np.array([
+                        fz_freq / freq_div + idx * fz_freq / freq_div for idx in range(nb_scales)
+                    ])
+                    scale = pywt.frequency2scale(wavelet, freqs / f_s_downsamples)
+
+                    cwtmatr, __ = pywt.cwt(
+                        (data[:, sync_idx] - np.mean(data[:, sync_idx])) / np.std(data[:, sync_idx]),
+                        scale,
+                        wavelet,
+                        sampling_period=1/f_s_downsamples
+                    )
+
+                    power = np.power(np.abs(cwtmatr), 2)
+
+                    # Scale-dependent normalization of power
+                    scale_avg = np.repeat(scale, len(data)).reshape(power.shape)
+                    power = power / scale_avg
+
+                    start_idx = next(__ for __, val in enumerate(power[freq_div*2-1]) if val > sync_thresh)
+                    sig_start = time[start_idx]
+                    stop_idx = (
+                        len(data) \
+                        - next(__ for __, val in enumerate(np.flip(power[freq_div*2-1])) if val > sync_thresh)
+                    )
+                    sig_stop = time[stop_idx]
 
                     # if VERBOSE and exp_number in PROBLEM_CASES:
                     if VERBOSE:
@@ -307,7 +318,6 @@ class DataProcessing:
                         axs_path.set_xlim(-45, 45)
                         axs_path.set_ylim(-45, 45)
 
-
                         fig_path.tight_layout(pad=0.1)
 
                     data = data[start_idx:stop_idx]
@@ -322,7 +332,6 @@ class DataProcessing:
                     else:
                         data = data[:len(path)]
                         time = time[:len(path)]
-
 
                     if VERBOSE:
                         ###########################################################################
