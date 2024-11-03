@@ -74,8 +74,14 @@ def test(hyperopt, test_data):
             borderaxespad=0.,
             frameon=False
         )
+        # print(scenario_idx)
+        estimator_name = (
+            f'{hyperopt[0, 0].best_estimator_.__class__.__name__}' if CLUSTER_MODELING else
+            f'{hyperopt[0].best_estimator_.__class__.__name__}'
+        )
+
         plt.savefig(
-            f'{PLOT_DIR}/{hyperopt[0].best_estimator_.__class__.__name__}_scenario{scenario_idx}.png',
+            f'{PLOT_DIR}/{estimator_name}_scenario{scenario_idx}.png',
             dpi=600
         )
         # plt.show()

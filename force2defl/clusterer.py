@@ -44,15 +44,22 @@ class Clusterer:
         Clusters train and test data using cluster_cols as features.
         Add additional column to each data array indicating the cluster index.
         """
-        clusterer_fname = f'{MODEL_DIR}/kmeans.joblib'
+        # clusterer_fname = f'{MODEL_DIR}/kmeans.joblib'
+        clusterer_fname = f'{MODEL_DIR}/gmm.joblib'
 
         if os.path.isfile(clusterer_fname):
             clusterer = load(clusterer_fname)
         else:
-            clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
+            # clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
+            clusterer = BayesianGaussianMixture(
+                n_components=N_CLUSTER,
+                covariance_type='full',
+                n_init=10,
+                random_state=10
+            )
             dump(
                 clusterer,
-                f'{MODEL_DIR}/kmeans.joblib'
+                clusterer_fname
             )
 
         cluster_labels = clusterer.fit_predict(train_data[:, cluster_cols])
@@ -70,7 +77,6 @@ class Clusterer:
     def plot_cluster(self, data):
         labels = data[:, -1]
         colors = cm.get_cmap('Spectral')(labels.astype(float) / N_CLUSTER)
-
 
         fig, axs = plt.subplots(1, 2, figsize=(30*CM_INCH, 10*CM_INCH), layout='constrained')
 
