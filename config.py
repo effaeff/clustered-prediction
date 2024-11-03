@@ -107,7 +107,7 @@ REGRESSORS = [
     [
         RandomForestRegressor(
             random_state=RANDOM_SEED,
-            n_jobs=available_cpu_count()//2
+            n_jobs=available_cpu_count()
         ) for __ in range(OUTPUT_SIZE)
     ]
 ]
