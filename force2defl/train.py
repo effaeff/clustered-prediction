@@ -31,8 +31,7 @@ def fit(inp, target, regressor, param_dict, hyperopt_fname):
     if os.path.isfile(hyperopt_fname):
         rand_search = load(hyperopt_fname)
     else:
-        if VERBOSE:
-            print(f'Fitting {hyperopt_fname}...')
+        print(f'Fitting {hyperopt_fname}...')
         rand_search = RandomizedSearchCV(
             regressor,
             param_distributions=param_dict,
@@ -59,7 +58,7 @@ def train(train_data):
             np.empty((len(REGRESSORS), OUTPUT_SIZE, N_CLUSTER), dtype=object) if CLUSTER_MODELING else
             np.empty((len(REGRESSORS), OUTPUT_SIZE), dtype=object)
         )
-        for reg_idx in tqdm(range(len(REGRESSORS))):
+        for reg_idx in range(len(REGRESSORS)):
             for out_idx in range(OUTPUT_SIZE):
                 if CLUSTER_MODELING:
                     for cluster_idx in range(N_CLUSTER):
