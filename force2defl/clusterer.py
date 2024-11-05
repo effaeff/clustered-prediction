@@ -48,6 +48,7 @@ class Clusterer:
         clusterer_fname = f'{MODEL_DIR}/gmm.joblib'
 
         if os.path.isfile(clusterer_fname):
+            print(f'Loading clusterer {clusterer_fname}')
             clusterer = load(clusterer_fname)
         else:
             # clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
@@ -57,12 +58,14 @@ class Clusterer:
                 n_init=10,
                 random_state=10
             )
+            print(f'Fitting clusterer {clusterer_fname}')
+            clusterer.fit(train_data[:, cluster_cols])
             dump(
                 clusterer,
                 clusterer_fname
             )
 
-        cluster_labels = clusterer.fit_predict(train_data[:, cluster_cols])
+        cluster_labels = clusterer.predict(train_data[:, cluster_cols])
         train_data = np.c_[train_data, cluster_labels]
 
         for test_idx, test_scenario in enumerate(test_data):
