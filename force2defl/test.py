@@ -33,12 +33,13 @@ def test(hyperopt, test_data):
                 pred = np.array([])
                 for cluster_idx in range(N_CLUSTER):
                     cluster_data = test_scenario[test_scenario[:, -1]==cluster_idx, :-1]
-                    cluster_pred = hyperopt[out_idx, cluster_idx].predict(cluster_data[:, :INPUT_SIZE])
+                    if len(cluster_data) > 0:
+                        cluster_pred = hyperopt[out_idx, cluster_idx].predict(cluster_data[:, :INPUT_SIZE])
 
-                    timed_pred = np.c_[cluster_data[:, 0], cluster_pred]
-                    pred = np.vstack([pred, timed_pred]) if pred.size else timed_pred
+                        timed_pred = np.c_[cluster_data[:, 0], cluster_pred]
+                        pred = np.vstack([pred, timed_pred]) if pred.size else timed_pred
 
-                    # pred = np.concatenate((pred, np.c_[cluster_data[:, 0], pred]))
+                        # pred = np.concatenate((pred, np.c_[cluster_data[:, 0], pred]))
 
                 # Sort cluster-based prediction according to time channel
                 pred = pred[pred[:, 0].argsort(), 1]
