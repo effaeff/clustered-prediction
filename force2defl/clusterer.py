@@ -45,25 +45,44 @@ class Clusterer:
         Add additional column to each data array indicating the cluster index.
         """
         # clusterer_fname = f'{MODEL_DIR}/kmeans.joblib'
-        clusterer_fname = f'{MODEL_DIR}/gmm.joblib'
+        clusterer_fname = f'{MODEL_DIR}/gmm'
 
         if os.path.isfile(clusterer_fname):
             print(f'Loading clusterer {clusterer_fname}')
-            clusterer = load(clusterer_fname)
+            # clusterer = load(clusterer_fname)
+
+            means = np.load(f'{clusterer_fname}_means.npy')
+
+            clusterer = GaussianMixture(n_components = len(means), covariance_type='full')
+
+            clusterer.means_ = means
+            clusterer.precisions_cholesky_ = np.load(f'{clusterer_fname}_precisions_cholesky.npy')
+            clusterer.weights_ = np.load(f'{clusterer_fname}_weights.npy')
+            clusterer.covariances_ = np.load(f'{clusterer_fname}_covariances.npy')
         else:
             # clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
-            clusterer = BayesianGaussianMixture(
+            clusterer = GaussianMixture(
                 n_components=N_CLUSTER,
                 covariance_type='full',
                 n_init=10,
-                random_state=10
+                random_state=RANDOM_SEED
             )
             print(f'Fitting clusterer {clusterer_fname}')
             clusterer.fit(train_data[:, cluster_cols])
-            dump(
-                clusterer,
-                clusterer_fname
+
+            np.save(f'{clusterer_fname}_weights.npy', clusterer.weights_, allow_pickle=False)
+            np.save(f'{clusterer_fname}_means.npy', clusterer.means_, allow_pickle=False)
+            np.save(f'{clusterer_fname}_covariances.npy', clusterer.covariances_, allow_pickle=False)
+            np.save(
+                f'{clusterer_fname}_precisions_cholesky.npy',
+                clusterer.precisions_cholesky_,
+                allow_pickle=False
             )
+
+            # dump(
+                # clusterer,
+                # clusterer_fname
+            # )
 
         cluster_labels = clusterer.predict(train_data[:, cluster_cols])
         train_data = np.c_[train_data, cluster_labels]
