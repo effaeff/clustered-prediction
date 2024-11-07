@@ -47,7 +47,7 @@ class Clusterer:
         # clusterer_fname = f'{MODEL_DIR}/kmeans.joblib'
         clusterer_fname = f'{MODEL_DIR}/gmm'
 
-        if os.path.isfile(clusterer_fname):
+        if os.path.isfile(f'{clusterer_fname}_means.npy'):
             print(f'Loading clusterer {clusterer_fname}')
             # clusterer = load(clusterer_fname)
 
