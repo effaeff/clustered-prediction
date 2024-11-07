@@ -86,5 +86,6 @@ def test(hyperopt, test_data):
             dpi=600
         )
         # plt.show()
+        plt.close()
 
     return errors, variances
