@@ -90,13 +90,16 @@ class Clusterer:
         for test_idx, test_scenario in enumerate(test_data):
             cluster_labels = clusterer.predict(test_scenario[:, cluster_cols])
             test_data[test_idx] = np.c_[test_scenario, cluster_labels]
-            # self.plot_cluster(np.c_[test_scenario, cluster_labels])
+            self.plot_cluster(
+                np.c_[test_scenario, cluster_labels],
+                f'{PLOT_DIR}/clustering_test-scenario{test_idx}.png'
+            )
 
-        # self.plot_cluster(train_data)
+        self.plot_cluster(train_data, f'{PLOT_DIR}/clustering_train-data.png')
 
         return train_data, test_data
 
-    def plot_cluster(self, data):
+    def plot_cluster(self, data, save_fname):
         labels = data[:, -1]
         colors = cm.get_cmap('Spectral')(labels.astype(float) / N_CLUSTER)
 
@@ -132,10 +135,10 @@ class Clusterer:
         axs[0].set_xlim(-45, 45)
         axs[0].set_ylim(-45, 45)
 
-        # fig_cluster.savefig(f'{PLOT_DIR}/{exp_number}/gmm_selection_slides.png', dpi=600, transparent=True)
-        # fig_cluster.savefig(f'{PLOT_DIR}/{exp_number}/kmeans_all_slides.png', dpi=600, transparent=True)
+        plt.savefig(save_fname, dpi=600)
 
-        plt.show()
+        # plt.show()
+        plt.close()
 
     def silhouette_analysis(self, data):
         """Propably not working right now"""
