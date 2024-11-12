@@ -56,7 +56,7 @@ def main():
         errors, variances = test(hyperopt, test_data)
         total_errors[hyper_idx] = errors
         total_variances[hyper_idx] = variances
-        # write_results(hyperopts, total_errors, total_variances)
+        write_results(hyperopts, total_errors, total_variances)
 
 if __name__ == '__main__':
     main()
