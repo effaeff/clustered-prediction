@@ -15,7 +15,7 @@ import pywt
 from scipy import signal
 from matplotlib import pyplot as plt
 plt.rc('axes', axisbelow=True)
-plt.rc('font', family='Arial')
+# plt.rc('font', family='Arial')
 from matplotlib.patches import Rectangle
 from matplotlib import colormaps as cm
 from sklearn.cluster import KMeans
@@ -174,8 +174,8 @@ class DataProcessing:
                 ].to_numpy()[0][1:7]
                 chatter = params[params['Messdatei']==f'V0_{exp_number}'].to_numpy()[0][16]
 
-                if chatter in ['+', 'o/+', 'o']:
-                # if True:
+                # if chatter in ['+', 'o/+', 'o']:
+                if True:
                     if os.path.isfile(f'{PROCESSED_DIR}/{exp_number}_processed.npy'):
                         features_target = np.load(f'{PROCESSED_DIR}/{exp_number}_processed.npy')
                     else:
