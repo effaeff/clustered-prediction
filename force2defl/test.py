@@ -8,6 +8,7 @@ from matplotlib import pyplot as plt
 from plot_utils import modify_axis
 import matplotlib.ticker as mticker
 from matplotlib import rc
+plt.switch_backend('agg')
 # rc('font', family='Arial')
 
 from config import (
