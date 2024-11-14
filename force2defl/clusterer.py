@@ -94,12 +94,22 @@ class Clusterer:
                 clusterer.degrees_of_freedom_ = np.load(f'{clusterer_fname}_deg.npy')
         else:
             # clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
-            clusterer = BayesianGaussianMixture(
-                n_components=N_CLUSTER,
-                covariance_type='full',
-                n_init=10,
-                random_state=RANDOM_SEED
+            clusterer = (
+                BayesianGaussianMixture(
+                    n_components=N_CLUSTER,
+                    covariance_type='full',
+                    n_init=10,
+                    random_state=RANDOM_SEED,
+                    weight_concentration_prior_type='dirichlet_process'
+                ) if MIXTURE_TYPE == f'bgmm' else
+                GaussianMixture(
+                    n_components=N_CLUSTER,
+                    covariance_type='full',
+                    n_init=10,
+                    random_state=RANDOM_SEED
+                )
             )
+
             print(f'Fitting clusterer {clusterer_fname}')
             clusterer.fit(train_data[:, cluster_cols])
 
