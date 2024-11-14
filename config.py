@@ -72,15 +72,15 @@ CLUSTER_COLS = [1, 2, 3, 4, 5]
 MIXTURE_TYPE = 'bgmm'
 
 PARAM_DICTS = [
-    {
-        'learning_rate': uniform(0.0001, 0.1),
-        'max_depth': randint(2, 16),
-        'subsample': uniform(0.5, 0.5),
-        'n_estimators': randint(100, 250),
-        'colsample_bytree': uniform(0.4, 0.6),
-        'lambda': randint(1, 100),
-        'gamma': uniform()
-    }
+    # {
+        # 'learning_rate': uniform(0.0001, 0.1),
+        # 'max_depth': randint(2, 16),
+        # 'subsample': uniform(0.5, 0.5),
+        # 'n_estimators': randint(100, 250),
+        # 'colsample_bytree': uniform(0.4, 0.6),
+        # 'lambda': randint(1, 100),
+        # 'gamma': uniform()
+    # }
     # {
         # 'learning_rate': uniform(0.0001, 0.1),
         # 'n_estimators': randint(100, 1000)
