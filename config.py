@@ -23,9 +23,9 @@ N_EDGES = 2
 
 DATA_DIR = 'data/01_raw'
 PROCESSED_DIR = 'data/02_processed'
-MODEL_DIR = 'models'
-RESULTS_DIR = 'results'
-PLOT_DIR = 'plots'
+MODEL_DIR = 'models/new_defl_bgmm_defl'
+RESULTS_DIR = 'results/new_defl_bgmm_defl'
+PLOT_DIR = 'plots/new_defl_gmm_defl'
 PARAM_FILE = 'data/01_raw/clustersim_lhs_Zuordnung_Messdaten__FW.xlsx'
 
 OUT_LABELS = ['dx', 'dy']
@@ -66,9 +66,9 @@ PROBLEM_CASES = [
 ]
 
 CLUSTER_MODELING = True
-N_CLUSTER = 12
+N_CLUSTER = 25
 N_CLUSTER_SILH = [3, 8, 12]
-CLUSTER_COLS = [1, 2, 3, 4, 5]
+CLUSTER_COLS = [11, 12]
 MIXTURE_TYPE = 'bgmm'
 
 PARAM_DICTS = [
