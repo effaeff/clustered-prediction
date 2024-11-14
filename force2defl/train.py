@@ -63,19 +63,20 @@ def train(train_data):
                 if CLUSTER_MODELING:
                     for cluster_idx in range(N_CLUSTER):
                         cluster_data = train_data[train_data[:, -1]==cluster_idx, :-1]
-                        inp = cluster_data[:, :INPUT_SIZE]
-                        target = cluster_data[:, INPUT_SIZE + out_idx]
-                        hyperopt_fname = (
-                            f'{MODEL_DIR}/hyperopt_{REGRESSORS[reg_idx][0].__class__.__name__}'
-                            f'_{OUT_LABELS[out_idx]}_cluster-{cluster_idx}.joblib'
-                        )
-                        hyperopts[reg_idx, out_idx, cluster_idx] = fit(
-                            inp,
-                            target,
-                            REGRESSORS[reg_idx][out_idx],
-                            PARAM_DICTS[reg_idx],
-                            hyperopt_fname
-                        )
+                        if len(cluster_data) > 0:
+                            inp = cluster_data[:, :INPUT_SIZE]
+                            target = cluster_data[:, INPUT_SIZE + out_idx]
+                            hyperopt_fname = (
+                                f'{MODEL_DIR}/hyperopt_{REGRESSORS[reg_idx][0].__class__.__name__}'
+                                f'_{OUT_LABELS[out_idx]}_cluster-{cluster_idx}.joblib'
+                            )
+                            hyperopts[reg_idx, out_idx, cluster_idx] = fit(
+                                inp,
+                                target,
+                                REGRESSORS[reg_idx][out_idx],
+                                PARAM_DICTS[reg_idx],
+                                hyperopt_fname
+                            )
                 else:
                     inp = train_data[:, :INPUT_SIZE]
                     target = train_data[:, INPUT_SIZE + out_idx]
