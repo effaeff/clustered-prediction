@@ -147,7 +147,7 @@ class DataProcessing:
             self.train = self.clusterer.cluster_data(self.train, CLUSTER_COLS)
             self.test = self.clusterer.cluster_data(self.test, CLUSTER_COLS, 'test')
 
-        self.current_cluster = 0
+        self.current_cluster = 1
         np.set_printoptions(suppress=True)
 
         self.train = self.scale_scenarios(self.train)
