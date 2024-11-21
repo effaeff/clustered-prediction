@@ -2,34 +2,39 @@
 
 import os
 import re
+import math
 import numpy as np
 import pandas as pd
+
+from joblib import dump, load
+from pathlib import Path
 
 from tqdm import tqdm
 
 import misc
-
 from geometry import ar_area
+from plot_utils import modify_axis, hist, CM_INCH
+from series import butter_lowpass_filter
+from colors import dark2
+
+from force2defl.clusterer import Clusterer
 
 import pywt
+
 from scipy import signal
+
 from matplotlib import pyplot as plt
 plt.rc('axes', axisbelow=True)
 # plt.rc('font', family='Arial')
 from matplotlib.patches import Rectangle
 from matplotlib import colormaps as cm
+
 from sklearn.cluster import KMeans
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-
-from plot_utils import modify_axis, hist, CM_INCH
-from series import butter_lowpass_filter
-from colors import dark2
-
-from joblib import dump, load
-from pathlib import Path
+from sklearn.metrics import mean_squared_error
 
 from config import (
     DATA_DIR,
@@ -42,8 +47,14 @@ from config import (
     PROCESSED_DIR,
     TEST_SIZE,
     INPUT_SIZE,
+    OUTPUT_SIZE,
     PROBLEM_CASES,
-    N_EDGES
+    CLUSTER_MODELING,
+    CLUSTER_COLS,
+    N_EDGES,
+    N_WINDOW,
+    BATCH_SIZE,
+    NN
 )
 
 class SelectionStandardizer:
@@ -111,6 +122,7 @@ class SelectionStandardizer:
             if plt.waitforbuttonpress():
                 plt.close(self.fig)
 
+
 class DataProcessing:
     """Data processing class"""
     def __init__(self):
@@ -121,24 +133,207 @@ class DataProcessing:
 
         np.random.shuffle(self.train)
 
-        self.train_concat = self.train[0]
-        for scenario in self.train[1:]:
-            self.train_concat = np.concatenate((self.train_concat, scenario))
+        train_concat = self.concat_scenarios(self.train)
 
-        # Scaling moved to main script for now
-        # self.scaler = MinMaxScaler()
+        self.x_scaler = MinMaxScaler()
+        self.y_scaler = MinMaxScaler()
+        self.x_scaler.fit(train_concat[:, :INPUT_SIZE])
+        self.y_scaler.fit(train_concat[:, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE])
 
-        # self.train_concat[:, :INPUT_SIZE] = self.scaler.fit_transform(self.train_concat[:, :INPUT_SIZE])
+        self.clusterer = Clusterer()
 
-        # for test_idx, test_scenario in enumerate(self.test):
-            # scaled_test_scenario = self.scaler.transform(test_scenario[:, :INPUT_SIZE])
-            # self.test[test_idx][:, :INPUT_SIZE] = scaled_test_scenario
+        if CLUSTER_MODELING:
+            self.clusterer.fit_clusterer(train_concat, CLUSTER_COLS)
+            self.train = self.clusterer.cluster_data(self.train, CLUSTER_COLS)
+            self.test = self.clusterer.cluster_data(self.test, CLUSTER_COLS, 'test')
+
+        self.current_cluster = 0
+        np.set_printoptions(suppress=True)
+
+        self.train = self.scale_scenarios(self.train)
+        self.test = self.scale_scenarios(self.test)
+
+        if NN:
+            self.train = self.window_scenarios(self.train)
+        self.train = self.concat_scenarios(self.train)
+
+    def concat_scenarios(self, scenarios):
+        concat = scenarios[0]
+        for scenario in scenarios[1:]:
+            concat = np.concatenate((concat, scenario))
+        return concat
+
+    def scale_scenarios(self, scenarios):
+        for idx, scenario in enumerate(scenarios):
+            scaled_features = self.x_scaler.transform(scenario[:, :INPUT_SIZE])
+            scaled_targets = self.y_scaler.transform(
+                scenario[:, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE])
+            scenarios[idx][:, :INPUT_SIZE] = scaled_features
+            scenarios[idx][
+                :,
+                INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE
+            ] = scaled_targets
+        return scenarios
 
     def get_train_test(self):
-        return self.train_concat, self.test
+        # train = self.concat_scenarios(self.train)
+
+        return self.train, self.test
+
+    def window_scenarios(self, scenarios):
+        # Using GMM clustering, clustered samples, which share one model, have no time relationship anymore.
+        # To still take advantage of time-related kernel features,
+        # the previous N_WINDOW samples have to be prepended to each sample.
+        # Use index_tricks to get a strides view of array:
+        windowed_scenarios = []
+        for scenario in scenarios:
+            windowed_scenario = np.pad(scenario, ((N_WINDOW-1, 0), (0, 0)))
+            scenario_shape = list(scenario.shape)
+            scenario_shape[0] -= (N_WINDOW-1)
+            windowed_scenario = np.lib.index_tricks.as_strided(
+                scenario,
+                scenario_shape + [N_WINDOW],
+                scenario.strides + (scenario.strides[0],)
+            )
+            windowed_scenario = np.swapaxes(windowed_scenario, -1, -2)
+            windowed_scenarios.append(windowed_scenario)
+        return windowed_scenarios
+
+    def get_batches(self):
+        np.random.shuffle(self.train)
+
+        train = self.train
+        # Moved in constructor to speed up training
+        # train = self.window_scenarios(self.train)
+        # train = self.concat_scenarios(train)
+
+        if CLUSTER_MODELING:
+            train = train[train[:, -1, -1]==self.current_cluster, :, :-1]
+
+        train = np.reshape(
+            train[:len(train) // BATCH_SIZE * BATCH_SIZE],
+            (-1, BATCH_SIZE, 1, N_WINDOW, train.shape[-1])
+        )
+
+        return train
+
+    def set_current_cluster(self, cluster_no):
+        self.current_cluster = cluster_no
 
     # def get_scaler(self):
         # return self.scaler
+
+    def validate(self, evaluate, epoch_idx, save_eval, verbose, save_suffix):
+        if verbose:
+            print('Start validation...')
+        plot_dir = (
+            f'{PLOT_DIR}/CNN/epoch_{epoch_idx:03d}'
+            if not CLUSTER_MODELING else
+            f'{PLOT_DIR}/CNN/cluster_{self.current_cluster:02d}/epoch_{epoch_idx:03d}'
+        )
+        results_dir = (
+            f'{RESULTS_DIR}/CNN/epoch_{epoch_idx:03d}'
+            if not CLUSTER_MODELING else
+            f'{RESULTS_DIR}/CNN/cluster_{self.current_cluster:02d}/epoch_{epoch_idx:03d}'
+        )
+        misc.gen_dirs([plot_dir, results_dir])
+
+        test_scenarios = self.window_scenarios(self.test)
+
+        errors = np.zeros(OUTPUT_SIZE)
+        variances = np.zeros(OUTPUT_SIZE)
+
+        for scenario_idx, test_scenario in enumerate(test_scenarios):
+            if CLUSTER_MODELING:
+                test_scenario = test_scenario[test_scenario[:, -1, -1]==self.current_cluster, :, :-1]
+            inp = test_scenario[:, :, :INPUT_SIZE]
+            inp = np.reshape(inp, (-1, 1, N_WINDOW, inp.shape[-1]))
+            out = test_scenario[:, -1, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE]
+
+            pred_out = evaluate(inp, out)
+
+            for out_idx in range(OUTPUT_SIZE):
+                errors[out_idx] = math.sqrt(
+                    mean_squared_error(out[:, out_idx], pred_out[:, out_idx])
+                ) / np.ptp(out[:, out_idx]) * 100.0
+                variances[out_idx] = np.std(
+                    [
+                        abs(out[idx, out_idx] - pred_out[idx, out_idx]) / np.ptp(out[:, out_idx])
+                        for idx in range(len(out))
+                    ]
+                ) * 100.0
+
+            if verbose:
+                out = self.y_scaler.inverse_transform(out)
+                pred_out = self.y_scaler.inverse_transform(pred_out)
+                inp_unscaled = self.x_scaler.inverse_transform(test_scenario[:, -1, :INPUT_SIZE])
+
+                fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+                for idx, ax in enumerate(axs):
+                    ax.plot(inp_unscaled[:, 0], out[:, idx]*1000, label='Target', color=dark2[0])
+                    ax.plot(inp_unscaled[:, 0], pred_out[:, idx]*1000, label='Prediction', color=dark2[1])
+
+
+                axs[0].legend(
+                    bbox_to_anchor=(0., 0.98, 1., .102),
+                    loc='lower left',
+                    ncol=2,
+                    mode="expand",
+                    fontsize=FONTSIZE,
+                    borderaxespad=0.,
+                    frameon=False
+                )
+
+                # Features: time, fx, fy, fz, path_x, path_y, overlap, spsp, fz, r1, r2
+                fig.suptitle(
+                    f'No. = {int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE])}, '
+                    f'n = {int(inp_unscaled[0, 7])} RPM, '
+                    f'f$_z$ = {inp_unscaled[0, 8]} mm, '
+                    f'r$_1$ = {int(inp_unscaled[0, 9])}°, r$_2$ = {int(inp_unscaled[0, 10])}°',
+                    fontsize=FONTSIZE
+                )
+
+                fig.canvas.draw()
+
+                for idx, __ in enumerate(axs):
+                    axs[idx] = modify_axis(axs[idx], 's', 'µm', -3, -3, FONTSIZE)
+
+                axs[0].set_xticklabels([])
+                axs[-1].set_xlabel('Time', fontsize=FONTSIZE)
+                axs[0].set_ylabel('D$_x$', fontsize=FONTSIZE)
+                axs[1].set_ylabel('D$_y$', fontsize=FONTSIZE)
+
+                fig.align_ylabels()
+
+                fig.tight_layout(pad=1)
+
+                if save_eval:
+                    plt.savefig(
+                        f'{plot_dir}/'
+                        f'CNN_scenario{scenario_idx}_expno{int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE])}'
+                        f'{save_suffix}.png',
+                        dpi=600
+                    )
+                else:
+                    plt.show()
+                plt.close()
+
+        if save_eval:
+            with open(
+                f'{results_dir}/results.txt',
+                'w',
+                encoding='utf-8'
+            ) as res_file:
+                res_file.write(
+                    f"{'Regressor':<40} {'NRMSE dx':<40} NRMSE dy\n"
+                )
+                res_file.write(
+                    f"{'CNN':<40} "
+                    f"{f'{errors[0]:.2f} +/- {variances[0]:.2f}':<40} "
+                    f"{f'{errors[1]:.2f} +/- {variances[1]:.2f}'}\n"
+                )
+
+        return np.mean(errors), np.mean(variances)
 
     def read_raw(self):
         """Method for processing raw data"""
@@ -178,6 +373,10 @@ class DataProcessing:
                 if True:
                     if os.path.isfile(f'{PROCESSED_DIR}/{exp_number}_processed.npy'):
                         features_target = np.load(f'{PROCESSED_DIR}/{exp_number}_processed.npy')
+                        features_target = np.c_[
+                            features_target,
+                            [exp_number for __ in range(len(features_target))]
+                        ]
                     else:
                         data = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}_combined.npy')
                         # data = np.load(f'{DATA_DIR}/Cluster_Sim_V0_{exp_number}.npy')

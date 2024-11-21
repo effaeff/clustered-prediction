@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from plot_utils import modify_axis
 import matplotlib.ticker as mticker
 from matplotlib import rc
-plt.switch_backend('agg')
+# plt.switch_backend('agg')
 # rc('font', family='Arial')
 
 from config import (
@@ -65,7 +65,6 @@ def test(hyperopt, test_data):
         for idx, ax in enumerate(axs):
             ax.plot(total_target[:, idx], label='Target')
             ax.plot(total_pred[:, idx], label='Prediction')
-
 
         axs[0].legend(
             bbox_to_anchor=(0., 1.02, 1., .102),

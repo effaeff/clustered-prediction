@@ -13,8 +13,11 @@ from joblib import dump, load
 from sklearn.preprocessing import MinMaxScaler
 
 from force2defl.data_processing import DataProcessing
+from force2defl.nn_trainer import Trainer, ClusterTrainer
 from force2defl.clusterer import Clusterer
 from force2defl.train import train
+# from force2defl.tcn import TCN
+from pytorchutils.cnn import CNNModel
 from force2defl.test import test
 from force2defl.utils import write_results, load_estimators
 
@@ -28,7 +31,9 @@ from config import (
     OUTPUT_SIZE,
     CLUSTER_MODELING,
     N_CLUSTER,
-    CLUSTER_COLS
+    CLUSTER_COLS,
+    NN,
+    model_config
 )
 
 def main():
@@ -36,26 +41,25 @@ def main():
     misc.gen_dirs([MODEL_DIR, PLOT_DIR, RESULTS_DIR, PROCESSED_DIR])
     processing = DataProcessing()
 
-    train_data, test_data = processing.get_train_test()
-
-    if CLUSTER_MODELING:
-        clusterer = Clusterer()
-        train_data, test_data = clusterer.cluster(train_data, test_data, CLUSTER_COLS)
-
-    scaler = MinMaxScaler()
-    train_data[:, :INPUT_SIZE] = scaler.fit_transform(train_data[:, :INPUT_SIZE])
-
-    for test_idx, test_scenario in enumerate(test_data):
-        scaled_test_scenario = scaler.transform(test_scenario[:, :INPUT_SIZE])
-        test_data[test_idx][:, :INPUT_SIZE] = scaled_test_scenario
-
-    hyperopts = train(train_data)
-    total_errors = np.empty((len(hyperopts), OUTPUT_SIZE))
-    total_variances = np.empty((len(hyperopts), OUTPUT_SIZE))
-    for hyper_idx, hyperopt in enumerate(hyperopts):
-        errors, variances = test(hyperopt, test_data)
-        total_errors[hyper_idx] = errors
-        total_variances[hyper_idx] = variances
+    if NN:
+        if CLUSTER_MODELING:
+            trainer = ClusterTrainer(model_config, processing)
+            trainer.train(validate_every=10, save_every=10, save_eval=True, verbose=True)
+        else:
+            model = CNNModel(model_config)
+            trainer = Trainer(model_config, model, processing)
+            trainer.get_batches_fn = processing.get_batches
+            trainer.train(validate_every=10, save_every=10, save_eval=True, verbose=True)
+            # trainer.validate(-1, False, True, '_debug')
+    else:
+        train_data, test_data = processing.get_train_test()
+        hyperopts = train(train_data)
+        total_errors = np.empty((len(hyperopts), OUTPUT_SIZE))
+        total_variances = np.empty((len(hyperopts), OUTPUT_SIZE))
+        for hyper_idx, hyperopt in enumerate(hyperopts):
+            errors, variances = test(hyperopt, test_data)
+            total_errors[hyper_idx] = errors
+            total_variances[hyper_idx] = variances
         write_results(hyperopts, total_errors, total_variances)
 
 if __name__ == '__main__':
