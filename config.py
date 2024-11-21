@@ -47,7 +47,7 @@ VERBOSE = False
 NN = True
 CLUSTER_MODELING = True
 
-config_str = 'new_defl_gmm8_force-path-overlay'
+config_str = 'new_defl_gmm10_force-path-window10_attn'
 
 # Dirs
 DATA_DIR = 'data/01_raw'
@@ -94,9 +94,9 @@ PROBLEM_CASES = [
 ]
 
 # Cluster stuff
-N_CLUSTER = 8
+N_CLUSTER = 10
 N_CLUSTER_SILH = [3, 8, 12]
-CLUSTER_COLS = [1, 2, 3, 4, 5, 6]
+CLUSTER_COLS = [1, 2, 3, 4, 5]
 CLUSTER_METHOD = 'kmeans'
 
 ############################
@@ -144,7 +144,7 @@ model_config = {
     'init': 'kaiming_normal',
     'init_layers': (nn.Conv2d),
     'learning_rate': 0.0001, # Also tried 0.00001, was worse
-    'max_iter': 401,
+    'max_iter': 101,
     'reg_lambda': 0.001,
     'dropout_rate': 0.0,
     'dropout_rate_conv': 0.0,
