@@ -60,8 +60,8 @@ class Trainer(BasicTrainer):
             )
 
         pbar = tqdm(batches, desc=f'Epoch {epoch_idx}', unit='batch')
-        total_out = np.reshape(batches[:, :, 0, -1, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE], (-1, OUTPUT_SIZE))
-        total_pred = np.empty((len(total_out), OUTPUT_SIZE))
+        # total_out = np.reshape(batches[:, :, 0, -1, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE], (-1, OUTPUT_SIZE))
+        # total_pred = np.empty((len(total_out), OUTPUT_SIZE))
         for idx, batch in enumerate(pbar):
             inp = batch[:, :, :, :INPUT_SIZE]
             out = batch[:, 0, -1, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE]
@@ -81,7 +81,7 @@ class Trainer(BasicTrainer):
 
             epoch_loss += batch_loss.item()
 
-            total_pred[idx*BATCH_SIZE:idx*BATCH_SIZE + BATCH_SIZE] = pred_out.cpu().detach().numpy()
+            # total_pred[idx*BATCH_SIZE:idx*BATCH_SIZE + BATCH_SIZE] = pred_out.cpu().detach().numpy()
 
             pbar.set_postfix(batch_loss=batch_loss.item(), epoch_loss=epoch_loss/(idx+1))
         epoch_loss /= len(batches)
@@ -105,7 +105,7 @@ class Trainer(BasicTrainer):
         inp = torch.Tensor(inp).to(DEVICE)
         return self.model(inp)
 
-    def evaluate(self, inp, out):
+    def evaluate(self, inp):
         """Prediction and error estimation for given input and output"""
         with torch.no_grad():
             # Switch to PyTorch's evaluation mode.
