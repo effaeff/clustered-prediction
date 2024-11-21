@@ -31,7 +31,7 @@ from config import (
     N_CLUSTER,
     N_CLUSTER_SILH,
     CLUSTER_COLS,
-    MIXTURE_TYPE,
+    CLUSTER_METHOD,
     VERBOSE
 )
 
@@ -46,122 +46,156 @@ class Clusterer:
         Clusters train and test data using cluster_cols as features.
         Add additional column to each data array indicating the cluster index.
         """
-        # clusterer_fname = f'{MODEL_DIR}/kmeans.joblib'
-        clusterer_fname = f'{MODEL_DIR}/{MIXTURE_TYPE}'
+        clusterer_fname = f'{MODEL_DIR}/{CLUSTER_METHOD}'
 
-        if os.path.isfile(f'{clusterer_fname}_means.npy'):
-            print(f'Loading clusterer {clusterer_fname}')
-            # clusterer = load(clusterer_fname)
+        if CLUSTER_METHOD=='kmeans':
+            if os.path.isfile(f'{clusterer_fname}.joblib'):
+                print(f'Loading clusterer {clusterer_fname}')
+                self.clusterer = load(f'{clusterer_fname}.joblib')
+            else:
+                self.clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
 
-            means = np.load(f'{clusterer_fname}_means.npy')
-            reg_covar = np.load(f'{clusterer_fname}_reg_covar.npy')
+                print(f'Fitting clusterer {clusterer_fname}')
+                self.clusterer.fit(data[:, cluster_cols])
 
-            self.clusterer = (
-                BayesianGaussianMixture(
-                    n_components=len(means),
-                    covariance_type='full',
-                    n_init=10,
-                    reg_covar=reg_covar,
-                    random_state=RANDOM_SEED,
-                    weight_concentration_prior_type=np.load(f'{clusterer_fname}_wcpt.npy'),
-                    init_params=np.load(f'{clusterer_fname}_init_params.npy')
-                ) if MIXTURE_TYPE == f'bgmm' else
-                GaussianMixture(
-                    n_components=len(means),
-                    covariance_type='full',
-                    n_init=10,
-                    reg_covar=reg_covar,
-                    random_state=RANDOM_SEED
+                dump(
+                    self.clusterer,
+                    f'{clusterer_fname}.joblib'
                 )
-            )
-
-            self.clusterer.means_ = means
-            self.clusterer.precisions_cholesky_ = np.load(f'{clusterer_fname}_precisions_cholesky.npy')
-            self.clusterer.weights_ = np.load(f'{clusterer_fname}_weights.npy')
-            self.clusterer.covariances_ = np.load(f'{clusterer_fname}_covariances.npy')
-            self.clusterer.precisions_ = np.load(f'{clusterer_fname}_predictions.npy')
-            self.clusterer.converged_ = np.load(f'{clusterer_fname}_converged.npy')
-            self.clusterer.n_iter_ = np.load(f'{clusterer_fname}_n_iter.npy')
-            self.clusterer.lower_bound_ = np.load(f'{clusterer_fname}_lower_bound.npy')
-
-            if self.clusterer.__class__.__name__ == 'BayesianGaussianMixture':
-                self.clusterer.weight_concentration_prior_ = np.load(f'{clusterer_fname}_wcp.npy')
-                self.clusterer.weight_concentration_ = np.load(f'{clusterer_fname}_wc.npy')
-                self.clusterer.mean_precision_prior = np.load(f'{clusterer_fname}_mpp.npy')
-                self.clusterer.mean_prior_ = np.load(f'{clusterer_fname}_mean_prior.npy')
-                self.clusterer.mean_precision_ = np.load(f'{clusterer_fname}_mean_precision.npy')
-                self.clusterer.covariance_prior_ = np.load(f'{clusterer_fname}_covar_prior.npy')
-                self.clusterer.degrees_of_freedom_prior_ = np.load(f'{clusterer_fname}_deg_prior.npy')
-                self.clusterer.degrees_of_freedom_ = np.load(f'{clusterer_fname}_deg.npy')
         else:
-            # clusterer = KMeans(n_clusters=N_CLUSTER, random_state=RANDOM_SEED, n_init=10)
-            self.clusterer = (
-                BayesianGaussianMixture(
-                    n_components=N_CLUSTER,
-                    covariance_type='full',
-                    n_init=10,
-                    random_state=RANDOM_SEED,
-                    weight_concentration_prior_type='dirichlet_process'
-                ) if MIXTURE_TYPE == f'bgmm' else
-                GaussianMixture(
-                    n_components=N_CLUSTER,
-                    covariance_type='full',
-                    n_init=10,
-                    random_state=RANDOM_SEED
+            if os.path.isfile(f'{clusterer_fname}_means.npy'):
+                print(f'Loading clusterer {clusterer_fname}')
+
+                means = np.load(f'{clusterer_fname}_means.npy')
+                reg_covar = np.load(f'{clusterer_fname}_reg_covar.npy')
+
+                self.clusterer = (
+                    BayesianGaussianMixture(
+                        n_components=len(means),
+                        covariance_type='full',
+                        n_init=10,
+                        reg_covar=reg_covar,
+                        random_state=RANDOM_SEED,
+                        weight_concentration_prior_type=np.load(f'{clusterer_fname}_wcpt.npy'),
+                        init_params=np.load(f'{clusterer_fname}_init_params.npy')
+                    ) if CLUSTER_METHOD == f'bgmm' else
+                    GaussianMixture(
+                        n_components=len(means),
+                        covariance_type='full',
+                        n_init=10,
+                        reg_covar=reg_covar,
+                        random_state=RANDOM_SEED
+                    )
                 )
-            )
 
-            print(f'Fitting clusterer {clusterer_fname}')
-            self.clusterer.fit(data[:, cluster_cols])
+                self.clusterer.means_ = means
+                self.clusterer.precisions_cholesky_ = np.load(f'{clusterer_fname}_precisions_cholesky.npy')
+                self.clusterer.weights_ = np.load(f'{clusterer_fname}_weights.npy')
+                self.clusterer.covariances_ = np.load(f'{clusterer_fname}_covariances.npy')
+                self.clusterer.precisions_ = np.load(f'{clusterer_fname}_predictions.npy')
+                self.clusterer.converged_ = np.load(f'{clusterer_fname}_converged.npy')
+                self.clusterer.n_iter_ = np.load(f'{clusterer_fname}_n_iter.npy')
+                self.clusterer.lower_bound_ = np.load(f'{clusterer_fname}_lower_bound.npy')
 
-            np.save(f'{clusterer_fname}_weights.npy', self.clusterer.weights_, allow_pickle=False)
-            np.save(f'{clusterer_fname}_means.npy', self.clusterer.means_, allow_pickle=False)
-            np.save(f'{clusterer_fname}_covariances.npy', self.clusterer.covariances_, allow_pickle=False)
-            np.save(f'{clusterer_fname}_predictions.npy', self.clusterer.precisions_, allow_pickle=False)
-            np.save(
-                f'{clusterer_fname}_precisions_cholesky.npy',
-                self.clusterer.precisions_cholesky_,
-                allow_pickle=False
-            )
-            np.save(f'{clusterer_fname}_converged.npy', self.clusterer.converged_, allow_pickle=False)
-            np.save(f'{clusterer_fname}_n_iter.npy', self.clusterer.n_iter_, allow_pickle=False)
-            np.save(f'{clusterer_fname}_lower_bound.npy', self.clusterer.lower_bound_, allow_pickle=False)
-            np.save(f'{clusterer_fname}_reg_covar.npy', self.clusterer.reg_covar, allow_pickle=False)
+                if self.clusterer.__class__.__name__ == 'BayesianGaussianMixture':
+                    self.clusterer.weight_concentration_prior_ = np.load(f'{clusterer_fname}_wcp.npy')
+                    self.clusterer.weight_concentration_ = np.load(f'{clusterer_fname}_wc.npy')
+                    self.clusterer.mean_precision_prior = np.load(f'{clusterer_fname}_mpp.npy')
+                    self.clusterer.mean_prior_ = np.load(f'{clusterer_fname}_mean_prior.npy')
+                    self.clusterer.mean_precision_ = np.load(f'{clusterer_fname}_mean_precision.npy')
+                    self.clusterer.covariance_prior_ = np.load(f'{clusterer_fname}_covar_prior.npy')
+                    self.clusterer.degrees_of_freedom_prior_ = np.load(f'{clusterer_fname}_deg_prior.npy')
+                    self.clusterer.degrees_of_freedom_ = np.load(f'{clusterer_fname}_deg.npy')
+            else:
+                self.clusterer = (
+                    BayesianGaussianMixture(
+                        n_components=N_CLUSTER,
+                        covariance_type='full',
+                        n_init=10,
+                        random_state=RANDOM_SEED,
+                        weight_concentration_prior_type='dirichlet_process'
+                    ) if CLUSTER_METHOD == f'bgmm' else
+                    GaussianMixture(
+                        n_components=N_CLUSTER,
+                        covariance_type='full',
+                        n_init=10,
+                        random_state=RANDOM_SEED
+                    )
+                )
 
-            if self.clusterer.__class__.__name__ == 'BayesianGaussianMixture':
+                print(f'Fitting clusterer {clusterer_fname}')
+                self.clusterer.fit(data[:, cluster_cols])
+
+                np.save(f'{clusterer_fname}_weights.npy', self.clusterer.weights_, allow_pickle=False)
+                np.save(f'{clusterer_fname}_means.npy', self.clusterer.means_, allow_pickle=False)
                 np.save(
-                    f'{clusterer_fname}_wcpt.npy',
-                    self.clusterer.weight_concentration_prior_type,
+                    f'{clusterer_fname}_covariances.npy',
+                    self.clusterer.covariances_,
                     allow_pickle=False
                 )
-                np.save(f'{clusterer_fname}_init_params.npy', self.clusterer.init_params, allow_pickle=False)
+                np.save(f'{clusterer_fname}_predictions.npy', self.clusterer.precisions_, allow_pickle=False)
                 np.save(
-                    f'{clusterer_fname}_wcp.npy',
-                    self.clusterer.weight_concentration_prior_, allow_pickle=False
-                )
-                np.save(f'{clusterer_fname}_wc.npy', self.clusterer.weight_concentration_, allow_pickle=False)
-                np.save(f'{clusterer_fname}_mpp.npy', self.clusterer.mean_precision_prior, allow_pickle=False)
-                np.save(f'{clusterer_fname}_mean_prior.npy', self.clusterer.mean_prior_, allow_pickle=False)
-                np.save(
-                    f'{clusterer_fname}_mean_precision.npy',
-                    self.clusterer.mean_precision_, allow_pickle=False
-                )
-                np.save(
-                    f'{clusterer_fname}_covar_prior.npy',
-                    self.clusterer.covariance_prior_, allow_pickle=False
-                )
-                np.save(
-                    f'{clusterer_fname}_deg_prior.npy',
-                    self.clusterer.degrees_of_freedom_prior_,
+                    f'{clusterer_fname}_precisions_cholesky.npy',
+                    self.clusterer.precisions_cholesky_,
                     allow_pickle=False
                 )
-                np.save(f'{clusterer_fname}_deg.npy', self.clusterer.degrees_of_freedom_, allow_pickle=False)
+                np.save(f'{clusterer_fname}_converged.npy', self.clusterer.converged_, allow_pickle=False)
+                np.save(f'{clusterer_fname}_n_iter.npy', self.clusterer.n_iter_, allow_pickle=False)
+                np.save(
+                    f'{clusterer_fname}_lower_bound.npy',
+                    self.clusterer.lower_bound_,
+                    allow_pickle=False
+                )
+                np.save(f'{clusterer_fname}_reg_covar.npy', self.clusterer.reg_covar, allow_pickle=False)
 
-
-            # dump(
-                # clusterer,
-                # clusterer_fname
-            # )
+                if self.clusterer.__class__.__name__ == 'BayesianGaussianMixture':
+                    np.save(
+                        f'{clusterer_fname}_wcpt.npy',
+                        self.clusterer.weight_concentration_prior_type,
+                        allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_init_params.npy',
+                        self.clusterer.init_params,
+                        allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_wcp.npy',
+                        self.clusterer.weight_concentration_prior_, allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_wc.npy',
+                        self.clusterer.weight_concentration_,
+                        allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_mpp.npy',
+                        self.clusterer.mean_precision_prior,
+                        allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_mean_prior.npy',
+                        self.clusterer.mean_prior_,
+                        allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_mean_precision.npy',
+                        self.clusterer.mean_precision_, allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_covar_prior.npy',
+                        self.clusterer.covariance_prior_, allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_deg_prior.npy',
+                        self.clusterer.degrees_of_freedom_prior_,
+                        allow_pickle=False
+                    )
+                    np.save(
+                        f'{clusterer_fname}_deg.npy',
+                        self.clusterer.degrees_of_freedom_,
+                        allow_pickle=False
+                    )
 
     def cluster_data(self, scenarios, cluster_cols, data_type='train'):
         print(f'Clustering {data_type} data...')
