@@ -97,7 +97,7 @@ PROBLEM_CASES = [
 N_CLUSTER = 8
 N_CLUSTER_SILH = [3, 8, 12]
 CLUSTER_COLS = [1, 2, 3, 4, 5, 6]
-MIXTURE_TYPE = 'gmm'
+CLUSTER_METHOD = 'kmeans'
 
 ############################
 ## Neural network shizzle ##
