@@ -47,7 +47,7 @@ VERBOSE = False
 NN = True
 CLUSTER_MODELING = True
 
-config_str = 'new_defl_gmm10_force-path-window10_attn'
+config_str = 'new_defl_kmeans12_path'
 
 # Dirs
 DATA_DIR = 'data/01_raw'
@@ -94,9 +94,9 @@ PROBLEM_CASES = [
 ]
 
 # Cluster stuff
-N_CLUSTER = 10
+N_CLUSTER = 12
 N_CLUSTER_SILH = [3, 8, 12]
-CLUSTER_COLS = [1, 2, 3, 4, 5]
+CLUSTER_COLS = [4, 5]
 CLUSTER_METHOD = 'kmeans'
 
 ############################
@@ -104,7 +104,7 @@ CLUSTER_METHOD = 'kmeans'
 ############################
 
 # N_WINDOW = 6
-N_WINDOW = INPUT_SIZE * 3
+N_WINDOW = INPUT_SIZE
 BATCH_SIZE = 1024
 
 KERNEL_SIZE_CONV = 3

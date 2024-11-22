@@ -147,7 +147,7 @@ class DataProcessing:
             self.train = self.clusterer.cluster_data(self.train, CLUSTER_COLS)
             self.test = self.clusterer.cluster_data(self.test, CLUSTER_COLS, 'test')
 
-        self.current_cluster = 1
+        self.current_cluster = 0
         np.set_printoptions(suppress=True)
 
         self.train = self.scale_scenarios(self.train)
@@ -155,12 +155,14 @@ class DataProcessing:
 
         if NN:
             self.train = self.window_scenarios(self.train)
+
         self.train = self.concat_scenarios(self.train)
 
     def concat_scenarios(self, scenarios):
-        concat = scenarios[0]
-        for scenario in scenarios[1:]:
-            concat = np.concatenate((concat, scenario))
+        concat = np.vstack(scenarios)
+        # concat = scenarios[0]
+        # for scenario in scenarios[1:]:
+            # concat = np.concatenate((concat, scenario))
         return concat
 
     def scale_scenarios(self, scenarios):
