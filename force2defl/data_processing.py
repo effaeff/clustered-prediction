@@ -247,19 +247,31 @@ class DataProcessing:
             if CLUSTER_MODELING:
                 test_scenario = test_scenario[test_scenario[:, -1, -1]==self.current_cluster, :, :-1]
 
-            test_scenario = test_scenario[:len(test_scenario) // BATCH_SIZE * BATCH_SIZE]
+            if len(test_scenario) > BATCH_SIZE:
+                test_scenario = test_scenario[:len(test_scenario) // BATCH_SIZE * BATCH_SIZE]
+            elif len(test_scenario)==0:
+                continue
 
             inp = test_scenario[:, :, :INPUT_SIZE]
             inp = np.reshape(
                 inp,
-                (-1, BATCH_SIZE, 1, N_WINDOW, inp.shape[-1])
+                (
+                    -1,
+                    BATCH_SIZE if len(test_scenario) >= BATCH_SIZE else len(test_scenario),
+                    1,
+                    N_WINDOW,
+                    inp.shape[-1]
+                )
             )
             out = test_scenario[:, -1, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE]
 
             pred_out = np.empty(out.shape)
-            for batch_idx, batch in enumerate(inp):
-                batch_pred = evaluate(batch)
-                pred_out[batch_idx*BATCH_SIZE:batch_idx*BATCH_SIZE + BATCH_SIZE] = batch_pred
+            if len(inp) == 1:
+                pred_out = evaluate(inp[0])
+            else:
+                for batch_idx, batch in enumerate(inp):
+                    batch_pred = evaluate(batch)
+                    pred_out[batch_idx*BATCH_SIZE:batch_idx*BATCH_SIZE + BATCH_SIZE] = batch_pred
 
             for out_idx in range(OUTPUT_SIZE):
                 errors[out_idx] = math.sqrt(
