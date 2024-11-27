@@ -1,18 +1,24 @@
 """Neural network trainer class for time series modeling"""
 
 import numpy as np
+import math
 
 from pytorchutils.globals import torch, DEVICE
 from pytorchutils.basic_trainer import BasicTrainer
 from pytorchutils.cnn import CNNModel
 import misc
 
+from sklearn.metrics import mean_squared_error
+
 from config import (
     INPUT_SIZE,
     OUTPUT_SIZE,
     N_CLUSTER,
     MODEL_DIR,
-    BATCH_SIZE
+    N_WINDOW,
+    BATCH_SIZE,
+    PLOT_DIR,
+    RESULTS_DIR
 )
 
 from tqdm import tqdm
@@ -42,6 +48,122 @@ class ClusterTrainer:
                 save_eval=save_eval,
                 verbose=verbose
             )
+
+    def validate(self, save_eval, save_suffix=''):
+        __, test_scenarios = self.dataprocessor.get_train_test()
+        test_scenarios = self.dataprocessor.window_scenarios(test_scenarios)
+
+        errors = np.zeros(OUTPUT_SIZE)
+        variances = np.zeros(OUTPUT_SIZE)
+
+        for scenario_idx, test_scenario in enumerate(tqdm(test_scenarios)):
+
+            exp_number = int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE])
+
+            total_inp = np.array([])
+            pred = np.array([])
+            out = np.array([])
+
+            plot_dir = f'{PLOT_DIR}/CNN'
+            results_dir = f'{RESULTS_DIR}/CNN'
+
+            misc.gen_dirs([plot_dir, results_dir])
+
+            for cluster_idx in range(N_CLUSTER):
+                self.config['models_dir'] = f'{MODEL_DIR}/cluster_{cluster_idx:02d}'
+                trainer = Trainer(self.config, self.models[cluster_idx], self.dataprocessor)
+
+                clustered_scenario = test_scenario[test_scenario[:, -1, -1]==cluster_idx, :, :-1]
+
+                if len(clustered_scenario) > BATCH_SIZE:
+                    clustered_scenario = clustered_scenario[
+                        :len(clustered_scenario) // BATCH_SIZE * BATCH_SIZE
+                    ]
+                elif len(clustered_scenario)==0:
+                    continue
+
+                clustered_inp = clustered_scenario[:, :, :INPUT_SIZE]
+                time = clustered_scenario[:, -1, 0]
+
+                cluster_pred = np.empty((len(clustered_inp), OUTPUT_SIZE))
+
+                inp = np.reshape(
+                    clustered_inp,
+                    (
+                        -1,
+                        BATCH_SIZE if len(clustered_scenario) >= BATCH_SIZE else len(clustered_scenario),
+                        1,
+                        N_WINDOW,
+                        clustered_inp.shape[-1]
+                    )
+                )
+                cluster_out = clustered_scenario[:, -1, INPUT_SIZE:INPUT_SIZE+OUTPUT_SIZE]
+
+                trainer.model.eval()
+                inp = torch.Tensor(inp).to(DEVICE)
+
+                if len(inp) == 1:
+                    batch_pred = trainer.model(inp[0])
+                    batch_pred = torch.sigmoid(batch_pred)
+                    cluster_pred = batch_pred.cpu().detach().numpy()
+                else:
+                    for batch_idx, batch in enumerate(inp):
+                        batch_pred = trainer.model(batch)
+                        batch_pred = torch.sigmoid(batch_pred)
+                        cluster_pred[
+                            batch_idx*BATCH_SIZE:batch_idx*BATCH_SIZE + BATCH_SIZE
+                        ] = batch_pred.cpu().detach().numpy()
+
+                timed_pred = np.c_[time, cluster_pred]
+                timed_out = np.c_[time, cluster_out]
+
+                total_inp = np.vstack(
+                    [total_inp, clustered_inp[:, -1, :]]
+                ) if total_inp.size else clustered_inp[:, -1, :]
+                pred = np.vstack([pred, timed_pred]) if pred.size else timed_pred
+                out = np.vstack([out, timed_out]) if out.size else timed_out
+
+            total_inp = total_inp[total_inp[:, 0].argsort(), :]
+            pred = pred[pred[:, 0].argsort(), 1:]
+            out = out[out[:, 0].argsort(), 1:]
+
+            for out_idx in range(OUTPUT_SIZE):
+                errors[out_idx] = math.sqrt(
+                    mean_squared_error(out[:, out_idx], pred[:, out_idx])
+                ) / np.ptp(out[:, out_idx]) * 100.0
+                variances[out_idx] = np.std(
+                    [
+                        abs(out[idx, out_idx] - pred[idx, out_idx]) / np.ptp(out[:, out_idx])
+                        for idx in range(len(out))
+                    ]
+                ) * 100.0
+
+            self.dataprocessor.plot_validation_scenario(
+                total_inp,
+                pred,
+                out,
+                exp_number,
+                plot_dir,
+                scenario_idx,
+                save_eval,
+                save_suffix
+            )
+        if save_eval:
+            with open(
+                f'{results_dir}/results.txt',
+                'w',
+                encoding='utf-8'
+            ) as res_file:
+                res_file.write(
+                    f"{'Regressor':<40} {'NRMSE dx':<40} NRMSE dy\n"
+                )
+                res_file.write(
+                    f"{'CNN':<40} "
+                    f"{f'{errors[0]:.2f} +/- {variances[0]:.2f}':<40} "
+                    f"{f'{errors[1]:.2f} +/- {variances[1]:.2f}'}\n"
+                )
+        print(f'Validation error: {np.mean(errors)} +- {np.mean(variances)}')
+
 
 class Trainer(BasicTrainer):
     """Wrapper class for training routine"""

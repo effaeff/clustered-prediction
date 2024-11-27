@@ -45,6 +45,8 @@ from config import (
     RESULTS_DIR,
     VERBOSE,
     PROCESSED_DIR,
+    SAMPLE_RATE,
+    DOWNSAMLING,
     TEST_SIZE,
     INPUT_SIZE,
     OUTPUT_SIZE,
@@ -287,59 +289,16 @@ class DataProcessing:
                 ) * 100.0
 
             if verbose:
-                out = self.y_scaler.inverse_transform(out)
-                pred_out = self.y_scaler.inverse_transform(pred_out)
-                inp_unscaled = self.x_scaler.inverse_transform(test_scenario[:, -1, :INPUT_SIZE])
-
-                fig, axs = plt.subplots(2, 1, figsize=(10, 10))
-                for idx, ax in enumerate(axs):
-                    ax.plot(inp_unscaled[:, 0], out[:, idx]*1000, label='Target', color=dark2[0])
-                    ax.plot(inp_unscaled[:, 0], pred_out[:, idx]*1000, label='Prediction', color=dark2[1])
-
-
-                axs[0].legend(
-                    bbox_to_anchor=(0., 0.98, 1., .102),
-                    loc='lower left',
-                    ncol=2,
-                    mode="expand",
-                    fontsize=FONTSIZE,
-                    borderaxespad=0.,
-                    frameon=False
+                self.plot_validation_scenario(
+                    test_scenario[:, -1, :INPUT_SIZE],
+                    pred_out,
+                    out,
+                    int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE]),
+                    plot_dir,
+                    scenario_idx,
+                    save_eval,
+                    save_suffix
                 )
-
-                # Features: time, fx, fy, fz, path_x, path_y, overlap, spsp, fz, r1, r2
-                fig.suptitle(
-                    f'No. = {int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE])}, '
-                    f'n = {int(inp_unscaled[0, 7])} RPM, '
-                    f'f$_z$ = {inp_unscaled[0, 8]} mm, '
-                    f'r$_1$ = {int(inp_unscaled[0, 9])}°, r$_2$ = {int(inp_unscaled[0, 10])}°',
-                    fontsize=FONTSIZE
-                )
-
-                fig.canvas.draw()
-
-                for idx, __ in enumerate(axs):
-                    axs[idx] = modify_axis(axs[idx], 's', 'µm', -3, -3, FONTSIZE)
-
-                axs[0].set_xticklabels([])
-                axs[-1].set_xlabel('Time', fontsize=FONTSIZE)
-                axs[0].set_ylabel('D$_x$', fontsize=FONTSIZE)
-                axs[1].set_ylabel('D$_y$', fontsize=FONTSIZE)
-
-                fig.align_ylabels()
-
-                fig.tight_layout(pad=1)
-
-                if save_eval:
-                    plt.savefig(
-                        f'{plot_dir}/'
-                        f'CNN_scenario{scenario_idx}_expno{int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE])}'
-                        f'{save_suffix}.png',
-                        dpi=600
-                    )
-                else:
-                    plt.show()
-                plt.close()
 
         if save_eval:
             with open(
@@ -357,6 +316,74 @@ class DataProcessing:
                 )
 
         return np.mean(errors), np.mean(variances)
+
+    def plot_validation_scenario(
+        self,
+        inp,
+        pred_out,
+        out,
+        exp_number,
+        plot_dir,
+        scenario_idx,
+        save_eval,
+        save_suffix,
+    ):
+        out = self.y_scaler.inverse_transform(out)
+        pred_out = self.y_scaler.inverse_transform(pred_out)
+        # inp_unscaled = self.x_scaler.inverse_transform(test_scenario[:, -1, :INPUT_SIZE])
+        inp_unscaled = self.x_scaler.inverse_transform(inp)
+
+        f_s_downsamples = SAMPLE_RATE / DOWNSAMLING
+        time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(out))])
+        fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+        for idx, ax in enumerate(axs):
+            ax.plot(time, out[:, idx]*1000, label='Target', color=dark2[0])
+            ax.plot(time, pred_out[:, idx]*1000, label='Prediction', color=dark2[1])
+
+        axs[0].legend(
+            bbox_to_anchor=(0., 0.98, 1., .102),
+            loc='lower left',
+            ncol=2,
+            mode="expand",
+            fontsize=FONTSIZE,
+            borderaxespad=0.,
+            frameon=False
+        )
+
+        # Features: time, fx, fy, fz, path_x, path_y, overlap, spsp, fz, r1, r2
+        fig.suptitle(
+            # f'No. = {int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE])}, '
+            f'No. = {exp_number}, '
+            f'n = {int(inp_unscaled[0, 7])} RPM, '
+            f'f$_z$ = {inp_unscaled[0, 8]} mm, '
+            f'r$_1$ = {int(inp_unscaled[0, 9])}°, r$_2$ = {int(inp_unscaled[0, 10])}°',
+            fontsize=FONTSIZE
+        )
+
+        fig.canvas.draw()
+
+        for idx, __ in enumerate(axs):
+            axs[idx] = modify_axis(axs[idx], 's', 'µm', -3, -3, FONTSIZE)
+
+        axs[0].set_xticklabels([])
+        axs[-1].set_xlabel('Time', fontsize=FONTSIZE)
+        axs[0].set_ylabel('D$_x$', fontsize=FONTSIZE)
+        axs[1].set_ylabel('D$_y$', fontsize=FONTSIZE)
+
+        fig.align_ylabels()
+
+        fig.tight_layout(pad=1)
+
+        if save_eval:
+            plt.savefig(
+                f'{plot_dir}/'
+                f'CNN_scenario{scenario_idx}_expno{exp_number}'
+                f'{save_suffix}.png',
+                dpi=600
+            )
+        else:
+            plt.show()
+        plt.close()
 
     def read_raw(self):
         """Method for processing raw data"""

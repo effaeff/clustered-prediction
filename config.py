@@ -40,7 +40,10 @@ import xgboost as xgb
 from scipy.stats import uniform, randint
 import numpy as np
 
+# Process props
 N_EDGES = 2
+SAMPLE_RATE = 100000
+DOWNSAMLING = 5
 
 # Switches
 VERBOSE = False
