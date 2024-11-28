@@ -44,13 +44,14 @@ def main():
     if NN:
         if CLUSTER_MODELING:
             trainer = ClusterTrainer(model_config, processing)
-            trainer.train(validate_every=10, save_every=10, save_eval=True, verbose=True)
+            # trainer.train(validate_every=10, save_every=10, save_eval=True, verbose=True)
+            trainer.validate(save_eval=False)
         else:
             model = CNNModel(model_config)
             trainer = Trainer(model_config, model, processing)
             trainer.get_batches_fn = processing.get_batches
-            trainer.train(validate_every=10, save_every=10, save_eval=True, verbose=True)
-            # trainer.validate(-1, False, True, '_debug')
+            # trainer.train(validate_every=10, save_every=10, save_eval=True, verbose=True)
+            trainer.validate(-1, False, True, '')
     else:
         train_data, test_data = processing.get_train_test()
         hyperopts = train(train_data)

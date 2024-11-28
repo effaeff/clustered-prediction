@@ -48,9 +48,11 @@ DOWNSAMPLING = 5
 # Switches
 VERBOSE = False
 NN = True
-CLUSTER_MODELING = True
+CLUSTER_MODELING = False
 
 config_str = 'new_defl_gmm10_force-path-window10_attn'
+# config_str = 'new_defl_gmm13_force-path'
+# config_str = 'new_defl'
 
 # Dirs
 DATA_DIR = 'data/01_raw'
@@ -97,7 +99,7 @@ PROBLEM_CASES = [
 ]
 
 # Cluster stuff
-N_CLUSTER = 12
+N_CLUSTER = 13
 N_CLUSTER_SILH = [3, 8, 12]
 CLUSTER_COLS = [1, 2, 3, 4, 5]
 CLUSTER_METHOD = 'gmm'
@@ -120,7 +122,7 @@ PADDING_POOL = 0
 STRIDE_POOL = 2
 DILATION_POOL = 1
 
-DIV_COUNT = div_counter(min(N_WINDOW, INPUT_SIZE), KERNEL_SIZE_POOL, PADDING_POOL, STRIDE_POOL, DILATION_POOL)-1
+DIV_COUNT = div_counter(min(N_WINDOW, INPUT_SIZE), KERNEL_SIZE_POOL, PADDING_POOL, STRIDE_POOL, DILATION_POOL)
 CHANNELS = gen_channels(1, DIV_COUNT)
 
 model_config = {

@@ -387,8 +387,8 @@ class DataProcessing:
                 f'{save_suffix}.png',
                 dpi=600
             )
-        else:
-            plt.show()
+        # else:
+            # plt.show()
         plt.close()
 
     def read_raw(self):
