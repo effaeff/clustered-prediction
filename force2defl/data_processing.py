@@ -46,7 +46,7 @@ from config import (
     VERBOSE,
     PROCESSED_DIR,
     SAMPLE_RATE,
-    DOWNSAMLING,
+    DOWNSAMPLING,
     TEST_SIZE,
     INPUT_SIZE,
     OUTPUT_SIZE,
@@ -333,7 +333,7 @@ class DataProcessing:
         # inp_unscaled = self.x_scaler.inverse_transform(test_scenario[:, -1, :INPUT_SIZE])
         inp_unscaled = self.x_scaler.inverse_transform(inp)
 
-        f_s_downsamples = SAMPLE_RATE / DOWNSAMLING
+        f_s_downsamples = SAMPLE_RATE / DOWNSAMPLING
         time = np.array([1 / f_s_downsamples * t_idx for t_idx in range(len(out))])
         fig, axs = plt.subplots(2, 1, figsize=(10, 10))
         for idx, ax in enumerate(axs):
