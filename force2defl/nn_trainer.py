@@ -1,9 +1,12 @@
 """Neural network trainer class for time series modeling"""
 
+import os
+import re
+
 import numpy as np
 import math
 
-from pytorchutils.globals import torch, DEVICE
+from pytorchutils.globals import torch, DEVICE, nn
 from pytorchutils.basic_trainer import BasicTrainer
 from pytorchutils.cnn import CNNModel
 import misc
@@ -26,7 +29,7 @@ from tqdm import tqdm
 class ClusterTrainer:
     """Wrapper for multiple trainers for each cluster"""
     def __init__(self, config, dataprocessor):
-        self.models = np.array([CNNModel(config) for __ in range(N_CLUSTER)])
+        self.models = np.array([nn.DataParallel(CNNModel(config)) for __ in range(N_CLUSTER)])
         self.config = config
         self.dataprocessor = dataprocessor
 
@@ -71,7 +74,20 @@ class ClusterTrainer:
 
             for cluster_idx in range(N_CLUSTER):
                 self.config['models_dir'] = f'{MODEL_DIR}/cluster_{cluster_idx:02d}'
-                trainer = Trainer(self.config, self.models[cluster_idx], self.dataprocessor)
+
+                epoch_dirs = os.listdir(f'{RESULTS_DIR}/CNN/cluster_{cluster_idx:02d}')
+                errors = np.empty(len(epoch_dirs))
+                for epoch_idx, epoch_dir in enumerate(epoch_dirs):
+                    res = np.genfromtxt(
+                        f'{RESULTS_DIR}/CNN/cluster_{cluster_idx:02d}/{epoch_dir}/results.txt',
+                        skip_header=1,
+                        usecols=[1, 3, 4, 6]
+                    )
+                    errors[epoch_idx] = np.mean(res)
+
+                best_epoch = int(re.search(r'\d+', epoch_dirs[np.argmin(errors)]).group())
+
+                trainer = Trainer(self.config, self.models[cluster_idx], self.dataprocessor, best_epoch)
 
                 clustered_scenario = test_scenario[test_scenario[:, -1, -1]==cluster_idx, :, :-1]
 
@@ -148,6 +164,12 @@ class ClusterTrainer:
                 save_eval,
                 save_suffix
             )
+            if save_eval:
+                np.savez(
+                    f'{results_dir}/CNN_scenario{scenario_idx}_expno{exp_number}{save_suffix}.npz',
+                    pred=pred,
+                    target=out
+                )
         if save_eval:
             with open(
                 f'{results_dir}/results.txt',
@@ -167,8 +189,8 @@ class ClusterTrainer:
 
 class Trainer(BasicTrainer):
     """Wrapper class for training routine"""
-    def __init__(self, config, model, dataprocessor):
-        BasicTrainer.__init__(self, config, model, dataprocessor)
+    def __init__(self, config, model, dataprocessor, load_epoch):
+        BasicTrainer.__init__(self, config, model, dataprocessor, load_epoch)
 
     def learn_from_epoch(self, epoch_idx, verbose):
         """Training method"""
