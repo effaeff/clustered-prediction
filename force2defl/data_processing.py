@@ -288,16 +288,22 @@ class DataProcessing:
                     ]
                 ) * 100.0
 
+            exp_number = int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE])
             if verbose:
                 self.plot_validation_scenario(
                     test_scenario[:, -1, :INPUT_SIZE],
                     pred_out,
                     out,
-                    int(test_scenario[0, -1, INPUT_SIZE+OUTPUT_SIZE]),
+                    exp_number,
                     plot_dir,
                     scenario_idx,
                     save_eval,
                     save_suffix
+                )
+                np.savez(
+                    f'{results_dir}/CNN_scenario{scenario_idx}_expno{exp_number}{save_suffix}.npz',
+                    pred=pred_out,
+                    target=out
                 )
 
         if save_eval:
